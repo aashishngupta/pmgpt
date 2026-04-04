@@ -1,0 +1,152 @@
+version: "1.0"
+
+app:
+  name: pmgPT
+  description: AI Chief of Staff for Product Managers
+  host: 0.0.0.0
+  port: 8000
+  debug: false
+
+# LLM Configuration
+llm:
+  external:
+    provider: anthropic
+    model: claude-opus-4-6
+    api_key_env: ANTHROPIC_API_KEY
+    max_tokens: 4096
+    temperature: 0.7
+  local:
+    provider: ollama
+    model: mistral
+    base_url: http://localhost:11434
+    max_tokens: 4096
+    temperature: 0.7
+
+# Data Sensitivity Classification
+# Levels: public < internal < confidential < restricted
+data_classification:
+  default_level: confidential  # fail safe: unknown fields default to confidential
+  levels:
+    public:
+      description: Safe for external LLM
+      llm_path: external_llm
+    internal:
+      description: Internal use only, local LLM
+      llm_path: local_llm
+    confidential:
+      description: Tokenized before local LLM, re-injected after
+      llm_path: local_llm
+      tokenize: true
+    restricted:
+      description: Never sent to any LLM, template rendering only
+      llm_path: template_only
+
+# RBAC Roles (admin > pm_lead > pm > viewer)
+rbac:
+  roles:
+    admin:
+      description: Full access to all features and data
+      agents: ["*"]
+      connectors: ["*"]
+      max_classification: restricted
+    pm_lead:
+      description: Lead PM with access to all agents and internal/confidential data
+      agents: ["sprint", "docs", "strategy", "analytics", "ops", "review"]
+      connectors: ["jira", "confluence", "slack", "notion"]
+      max_classification: confidential
+    pm:
+      description: Standard PM access
+      agents: ["sprint", "docs", "analytics", "ops"]
+      connectors: ["jira", "confluence", "slack"]
+      max_classification: internal
+    viewer:
+      description: Read-only access to public data
+      agents: ["analytics"]
+      connectors: ["confluence"]
+      max_classification: public
+
+# Connector Configuration
+connectors:
+  enabled:
+    - jira
+    - confluence
+    - slack
+    - notion
+  jira:
+    base_url_env: JIRA_BASE_URL
+    username_env: JIRA_USERNAME
+    api_token_env: JIRA_API_TOKEN
+    field_classifications:
+      summary: internal
+      description: internal
+      assignee: confidential
+      reporter: confidential
+      status: public
+      priority: public
+      created: public
+      updated: public
+      comments: confidential
+      custom_fields: confidential
+  confluence:
+    base_url_env: CONFLUENCE_BASE_URL
+    username_env: CONFLUENCE_USERNAME
+    api_token_env: CONFLUENCE_API_TOKEN
+    field_classifications:
+      title: internal
+      body: internal
+      author: confidential
+      space: public
+      created: public
+      updated: public
+  slack:
+    bot_token_env: SLACK_BOT_TOKEN
+    field_classifications:
+      message_text: internal
+      user_id: confidential
+      user_name: confidential
+      channel: internal
+      timestamp: public
+  notion:
+    api_key_env: NOTION_API_KEY
+    field_classifications:
+      title: internal
+      content: internal
+      created_by: confidential
+      last_edited_by: confidential
+      created_time: public
+      last_edited_time: public
+
+# Agent Configuration
+agents:
+  sprint:
+    description: Sprint planning, spillovers, Jira integration
+    required_connectors: [jira]
+    min_role: pm
+  docs:
+    description: PRD generation, spec writing
+    required_connectors: [confluence, notion]
+    min_role: pm
+  strategy:
+    description: Roadmap, OKRs, vision
+    required_connectors: []
+    min_role: pm_lead
+  analytics:
+    description: Metrics analysis
+    required_connectors: []
+    min_role: viewer
+  ops:
+    description: Standups, task triage
+    required_connectors: [jira, slack]
+    min_role: pm
+  review:
+    description: PM job review, career tools
+    required_connectors: []
+    min_role: pm
+
+# Audit logging
+audit:
+  enabled: true
+  log_file: logs/audit.log
+  log_level: INFO
+  include_prompts: false  # set true only in dev
+  include_responses: false
