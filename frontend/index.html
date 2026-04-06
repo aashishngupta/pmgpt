@@ -771,20 +771,52 @@
           <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 8l5 5 5-5"/></svg>
         </button>
         <div class="model-menu" id="topModelMenu">
-          <div class="model-section-label">External</div>
-          <div class="model-option active" id="opt-external" onclick="selectModel('external','Claude Sonnet')">
+          <div class="model-section-label">Anthropic</div>
+          <div class="model-option active" id="opt-external" onclick="selectModel('external','Claude Opus 4.6')">
             <div class="mo-left">
-              <div class="mo-icon" style="background:#FEF3C7">☁️</div>
-              <div><div class="mo-name">Claude Sonnet 4.6</div><div class="mo-sub">Anthropic · External</div></div>
+              <div class="mo-icon" style="background:#FEF3C7; font-size:13px; font-weight:700; color:#92400E;">A</div>
+              <div><div class="mo-name">Claude Opus 4.6</div><div class="mo-sub">Anthropic · Best quality</div></div>
             </div>
             <div class="mo-check"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M4 10l5 5 7-8"/></svg></div>
           </div>
           <div class="model-divider"></div>
-          <div class="model-section-label">Local</div>
+          <div class="model-section-label">OpenAI</div>
+          <div class="model-option" id="opt-openai" onclick="selectModel('openai','GPT-4o')">
+            <div class="mo-left">
+              <div class="mo-icon" style="background:#D1FAE5; font-size:13px; font-weight:700; color:#065F46;">G</div>
+              <div><div class="mo-name">GPT-4o</div><div class="mo-sub">OpenAI · Fast & capable</div></div>
+            </div>
+            <div class="mo-check" style="display:none"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M4 10l5 5 7-8"/></svg></div>
+          </div>
+          <div class="model-option" id="opt-openai-mini" onclick="selectModel('openai-mini','GPT-4o mini')">
+            <div class="mo-left">
+              <div class="mo-icon" style="background:#D1FAE5; font-size:13px; font-weight:700; color:#065F46;">G</div>
+              <div><div class="mo-name">GPT-4o mini</div><div class="mo-sub">OpenAI · Faster & cheaper</div></div>
+            </div>
+            <div class="mo-check" style="display:none"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M4 10l5 5 7-8"/></svg></div>
+          </div>
+          <div class="model-divider"></div>
+          <div class="model-section-label">Google</div>
+          <div class="model-option" id="opt-gemini" onclick="selectModel('gemini','Gemini 1.5 Pro')">
+            <div class="mo-left">
+              <div class="mo-icon" style="background:#DBEAFE; font-size:13px; font-weight:700; color:#1E40AF;">G</div>
+              <div><div class="mo-name">Gemini 1.5 Pro</div><div class="mo-sub">Google · Long context</div></div>
+            </div>
+            <div class="mo-check" style="display:none"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M4 10l5 5 7-8"/></svg></div>
+          </div>
+          <div class="model-option" id="opt-gemini-flash" onclick="selectModel('gemini-flash','Gemini Flash')">
+            <div class="mo-left">
+              <div class="mo-icon" style="background:#DBEAFE; font-size:13px; font-weight:700; color:#1E40AF;">G</div>
+              <div><div class="mo-name">Gemini 1.5 Flash</div><div class="mo-sub">Google · Ultra fast</div></div>
+            </div>
+            <div class="mo-check" style="display:none"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M4 10l5 5 7-8"/></svg></div>
+          </div>
+          <div class="model-divider"></div>
+          <div class="model-section-label">Local (Ollama)</div>
           <div class="model-option" id="opt-local" onclick="selectModel('local','Mistral Local')">
             <div class="mo-left">
-              <div class="mo-icon" style="background:#EDE9FE">🖥️</div>
-              <div><div class="mo-name">Mistral 7B</div><div class="mo-sub">Ollama · Local</div></div>
+              <div class="mo-icon" style="background:#EDE9FE; font-size:13px; font-weight:700; color:#5B21B6;">M</div>
+              <div><div class="mo-name">Mistral 7B</div><div class="mo-sub">Ollama · Fully local</div></div>
             </div>
             <div class="mo-check" style="display:none"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M4 10l5 5 7-8"/></svg></div>
           </div>
@@ -792,7 +824,7 @@
           <div class="model-section-label">Governed</div>
           <div class="model-option" id="opt-auto" onclick="selectModel('','Auto (Governed)')">
             <div class="mo-left">
-              <div class="mo-icon" style="background:#D1FAE5">🔀</div>
+              <div class="mo-icon" style="background:#F3F4F6;">🔀</div>
               <div><div class="mo-name">Auto</div><div class="mo-sub">Routes by data sensitivity</div></div>
             </div>
             <div class="mo-check" style="display:none"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M4 10l5 5 7-8"/></svg></div>
@@ -992,13 +1024,13 @@ function selectModel(mode, label) {
   llmMode = mode;
   document.getElementById('topModelLabel').textContent = label;
   document.getElementById('topModelMenu').classList.remove('open');
-  ['external','local','auto'].forEach(k => {
+  ['external','openai','openai-mini','gemini','gemini-flash','local','auto'].forEach(k => {
     const o = document.getElementById('opt-' + k);
     if (!o) return;
     o.classList.remove('active');
     o.querySelector('.mo-check').style.display = 'none';
   });
-  const key = mode === '' ? 'auto' : mode;
+  const key = mode === '' ? 'auto' : mode.replace(/[^a-z-]/g, '');
   const active = document.getElementById('opt-' + key);
   if (active) { active.classList.add('active'); active.querySelector('.mo-check').style.display = ''; }
 }

@@ -15,6 +15,18 @@ llm:
     api_key_env: ANTHROPIC_API_KEY
     max_tokens: 4096
     temperature: 0.7
+  openai:
+    provider: openai
+    model: gpt-4o
+    api_key_env: OPENAI_API_KEY
+    max_tokens: 4096
+    temperature: 0.7
+  gemini:
+    provider: google
+    model: gemini-1.5-pro
+    api_key_env: GOOGLE_AI_API_KEY
+    max_tokens: 4096
+    temperature: 0.7
   local:
     provider: ollama
     model: mistral

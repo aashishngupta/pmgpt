@@ -2,9 +2,18 @@
 LLM Router — selects and calls the right LLM based on governance routing path.
 
 Three paths (set by GovernanceEngine.routing_path()):
-  external_llm  → ExternalLLM (Anthropic Claude API)  — public data only
-  local_llm     → LocalLLM (Ollama)                   — internal/confidential
-  template_only → no LLM call at all                  — restricted data
+  external_llm  → Claude / GPT-4o / Gemini (user's choice)  — public data only
+  local_llm     → LocalLLM (Ollama)                          — internal/confidential
+  template_only → no LLM call at all                         — restricted data
+
+External provider is selected via llm_mode:
+  "external"       → Claude (default)
+  "openai"         → GPT-4o
+  "openai-mini"    → GPT-4o mini
+  "gemini"         → Gemini 1.5 Pro
+  "gemini-flash"   → Gemini 1.5 Flash
+  "local"          → Ollama (forced local)
+  "" / None        → Auto (governed routing)
 """
 
 from __future__ import annotations
@@ -22,7 +31,9 @@ from backend.core.governance import (
     GovernanceEngine,
 )
 from backend.llm.external import ExternalLLM
+from backend.llm.gemini_llm import GeminiLLM
 from backend.llm.local import LocalLLM
+from backend.llm.openai_llm import OpenAILLM
 
 logger = logging.getLogger("pmgpt.llm.router")
 
@@ -43,7 +54,11 @@ class LLMRouter:
 
         llm_cfg = config.get("llm", {})
         self._external = ExternalLLM(llm_cfg.get("external", {}))
-        self._local = LocalLLM(llm_cfg.get("local", {}))
+        self._local    = LocalLLM(llm_cfg.get("local", {}))
+        self._openai   = OpenAILLM(llm_cfg.get("openai", {}))
+        self._openai_mini = OpenAILLM({**llm_cfg.get("openai", {}), "model": "gpt-4o-mini"})
+        self._gemini   = GeminiLLM(llm_cfg.get("gemini", {}))
+        self._gemini_flash = GeminiLLM({**llm_cfg.get("gemini", {}), "model": "gemini-1.5-flash"})
 
     async def _compress_history(self, history: list[dict]) -> tuple[str, list[dict]]:
         """
@@ -125,7 +140,9 @@ class LLMRouter:
             max_level = SensitivityLevel.PUBLIC
 
         # User-selected LLM mode overrides governance routing
-        if llm_mode == "external":
+        # External-class modes all map to external path; provider resolved at call time
+        _external_modes = {"external", "openai", "openai-mini", "gemini", "gemini-flash"}
+        if llm_mode in _external_modes:
             llm_path = LLM_PATH_EXTERNAL
         elif llm_mode == "local":
             llm_path = LLM_PATH_LOCAL
@@ -151,7 +168,16 @@ class LLMRouter:
 
         try:
             if llm_path == LLM_PATH_EXTERNAL:
-                raw_response = await self._external.complete(
+                # Route to selected external provider
+                provider_map = {
+                    "openai":        self._openai,
+                    "openai-mini":   self._openai_mini,
+                    "gemini":        self._gemini,
+                    "gemini-flash":  self._gemini_flash,
+                }
+                provider = provider_map.get(llm_mode, self._external)
+                logger.info("External LLM: provider=%s mode=%s", provider.__class__.__name__, llm_mode)
+                raw_response = await provider.complete(
                     system_prompt, full_user_prompt, history=active_history
                 )
             else:  # local_llm
