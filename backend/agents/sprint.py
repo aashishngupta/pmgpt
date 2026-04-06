@@ -25,7 +25,7 @@ class SprintAgent(BaseAgent):
     name = "sprint"
     description = "Sprint planning, spillover analysis, Jira integration"
 
-    async def run(self, query: str, user_role: str, **kwargs: Any) -> str:
+    async def run(self, query: str, user_role: str, **kwargs: Any) -> tuple[str, list[dict]]:
         governance = self._governance()
         jira = self.registry.get("jira")
 
@@ -33,17 +33,44 @@ class SprintAgent(BaseAgent):
         connector_name: str | None = None
 
         if jira:
+            jql = self._build_jql(query)
             try:
-                jql = self._build_jql(query)
                 issues = await jira.fetch(jql, max_results=30)
                 if issues:
-                    # Summarise into a flat context dict for governance
                     context["issues"] = issues
                     context["issue_count"] = len(issues)
                     connector_name = "jira"
+                else:
+                    context["jira_status"] = "Connected to Jira but no issues found matching your query. Your board may be empty or the sprint hasn't started yet."
             except Exception as exc:
-                logger.warning("Jira fetch failed: %s", exc)
-                context["jira_error"] = str(exc)
+                logger.warning("Jira sprint fetch failed, falling back: %s", exc)
+                try:
+                    issues = await jira.fetch("status != Done ORDER BY updated DESC", max_results=30)
+                    if issues:
+                        context["issues"] = issues
+                        context["issue_count"] = len(issues)
+                        context["jira_status"] = "No active sprint found — showing all open issues instead."
+                        connector_name = "jira"
+                    else:
+                        context["jira_status"] = "Connected to Jira but no open issues found. Your board appears to be empty."
+                except Exception as exc2:
+                    logger.warning("Jira fallback also failed: %s", exc2)
+                    context["jira_status"] = "Could not connect to Jira. Please check your credentials or network connection."
+        else:
+            context["jira_status"] = "Jira is not configured. Please add your Jira credentials to get live sprint data."
+
+        # Pull upcoming sprint ceremonies from calendar
+        gcal = self.registry.get("gcalendar")
+        if gcal:
+            try:
+                events = await gcal.fetch("sprint", max_results=5)
+                if events:
+                    context["sprint_meetings"] = events
+                else:
+                    context["calendar_status"] = "No upcoming sprint meetings found in calendar."
+            except Exception as exc:
+                logger.warning("Google Calendar fetch failed in sprint agent: %s", exc)
+                context["calendar_status"] = "Could not connect to Google Calendar."
 
         response = await self.router.call(
             system_prompt=SYSTEM_PROMPT,
@@ -53,8 +80,11 @@ class SprintAgent(BaseAgent):
             connector=connector_name,
             agent=self.name,
             user_role=user_role,
+            llm_mode=kwargs.get("llm_mode"),
+            history=kwargs.get("history"),
         )
-        return response
+        sources = self._extract_sources(context, connector_name)
+        return response, sources
 
     def _build_jql(self, query: str) -> str:
         q_lower = query.lower()

@@ -23,12 +23,23 @@ class ExternalLLM:
         self.temperature = config.get("temperature", 0.7)
         self._client = anthropic.AsyncAnthropic(api_key=api_key)
 
-    async def complete(self, system: str, user: str) -> str:
-        logger.debug("ExternalLLM call: model=%s", self.model)
+    async def complete(
+        self,
+        system: str,
+        user: str,
+        history: list[dict] | None = None,
+    ) -> str:
+        """
+        history: list of {"role": "user"|"assistant", "content": str}
+                 representing prior turns (oldest first, excluding current user message).
+        """
+        logger.debug("ExternalLLM call: model=%s turns=%d", self.model, len(history or []))
+        messages = list(history or [])
+        messages.append({"role": "user", "content": user})
         message = await self._client.messages.create(
             model=self.model,
             max_tokens=self.max_tokens,
             system=system,
-            messages=[{"role": "user", "content": user}],
+            messages=messages,
         )
         return message.content[0].text

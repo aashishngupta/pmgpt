@@ -55,31 +55,67 @@ class JiraConnector(BaseConnector):
 
     def _normalize(self, issue: dict[str, Any]) -> dict[str, Any]:
         fields = issue.get("fields", {})
+        key = issue.get("key", "")
         assignee = fields.get("assignee") or {}
         reporter = fields.get("reporter") or {}
         status = fields.get("status") or {}
         priority = fields.get("priority") or {}
         comments_raw = (fields.get("comment") or {}).get("comments", [])
+        issue_type = (fields.get("issuetype") or {}).get("name", "")
 
         return {
-            "key": issue.get("key", ""),
+            "key": key,
+            "title": fields.get("summary", ""),      # alias for ingester
             "summary": fields.get("summary", ""),
-            "description": fields.get("description", ""),
+            "description": self._adf_to_text(fields.get("description")),
+            "content": self._adf_to_text(fields.get("description")),  # alias for ingester
+            "type": issue_type,
             "assignee": assignee.get("displayName", ""),
             "reporter": reporter.get("displayName", ""),
             "status": status.get("name", ""),
             "priority": priority.get("name", ""),
             "created": fields.get("created", ""),
             "updated": fields.get("updated", ""),
+            "url": f"{self._base}/browse/{key}",   # direct link to the issue
             "comments": [
                 {
                     "author": (c.get("author") or {}).get("displayName", ""),
-                    "body": c.get("body", ""),
+                    "body": self._adf_to_text(c.get("body")),
                     "created": c.get("created", ""),
                 }
                 for c in comments_raw
             ],
         }
+
+    def _adf_to_text(self, node: Any, depth: int = 0) -> str:
+        """
+        Recursively extract plain text from Atlassian Document Format (ADF) JSON.
+        Falls back gracefully if the description is already a plain string.
+        """
+        if not node:
+            return ""
+        if isinstance(node, str):
+            return node
+        if not isinstance(node, dict):
+            return ""
+
+        ntype = node.get("type", "")
+        text = node.get("text", "")
+
+        # Leaf text node
+        if text:
+            return text
+
+        parts: list[str] = []
+        for child in node.get("content", []):
+            child_text = self._adf_to_text(child, depth + 1)
+            if child_text:
+                parts.append(child_text)
+
+        # Add appropriate separators based on block type
+        sep = "\n" if ntype in ("paragraph", "heading", "bulletList", "orderedList",
+                                "listItem", "blockquote", "codeBlock", "rule") else " "
+        return sep.join(parts)
 
     async def health_check(self) -> bool:
         url = f"{self._base}/rest/api/3/myself"

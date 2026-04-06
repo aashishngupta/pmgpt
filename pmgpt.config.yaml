@@ -1,7 +1,7 @@
 version: "1.0"
 
 app:
-  name: pmgPT
+  name: pmGPT
   description: AI Chief of Staff for Product Managers
   host: 0.0.0.0
   port: 8000
@@ -72,6 +72,8 @@ connectors:
     - confluence
     - slack
     - notion
+    - gdrive
+    - gcalendar
   jira:
     base_url_env: JIRA_BASE_URL
     username_env: JIRA_USERNAME
@@ -106,6 +108,19 @@ connectors:
       user_name: confidential
       channel: internal
       timestamp: public
+  gdrive:
+    service_account_json_env: GOOGLE_SERVICE_ACCOUNT_JSON
+  gcalendar:
+    service_account_json_env: GOOGLE_SERVICE_ACCOUNT_JSON
+    calendar_id_env: GOOGLE_CALENDAR_ID
+    field_classifications:
+      title: internal
+      content: internal
+      owner: confidential
+      mime_type: public
+      url: public
+      created_time: public
+      modified_time: public
   notion:
     api_key_env: NOTION_API_KEY
     field_classifications:

@@ -1,0 +1,690 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>pmGPT — The Product OS for Modern Teams</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --navy: #0b1221;
+      --navy2: #111c35;
+      --blue: #4f8ef7;
+      --purple: #7c5cbf;
+      --teal: #3ecfb2;
+      --accent: #4f8ef7;
+      --accent-dark: #2563eb;
+      --text: #1a2035;
+      --text-muted: #64748b;
+      --border: #e8edf5;
+      --surface: #f8fafc;
+      --white: #ffffff;
+      --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      --radius: 14px;
+      --shadow: 0 1px 4px rgba(0,0,0,.06), 0 4px 16px rgba(0,0,0,.04);
+      --shadow-lg: 0 8px 32px rgba(0,0,0,.1);
+    }
+    html { scroll-behavior: smooth; }
+    body { font-family: var(--font); color: var(--text); background: var(--white); overflow-x: hidden; line-height: 1.6; }
+    a { text-decoration: none; color: inherit; }
+
+    /* ── Logo SVG ─────────────────────────────────────────────────────────── */
+    .logo-mark { display: flex; align-items: center; gap: 10px; }
+    .logo-svg { width: 36px; height: 36px; }
+
+    /* ── Nav ──────────────────────────────────────────────────────────────── */
+    nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 200;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 48px; height: 64px;
+      background: rgba(11,18,33,.92); backdrop-filter: blur(16px);
+      border-bottom: 1px solid rgba(255,255,255,.07);
+    }
+    .nav-brand { display: flex; align-items: center; gap: 10px; }
+    .nav-brand span { font-weight: 800; font-size: 18px; color: #fff; letter-spacing: -.3px; }
+    .nav-brand span em { font-style: normal; background: linear-gradient(90deg,#4f8ef7,#a78bfa); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
+    .nav-links { display: flex; gap: 32px; }
+    .nav-links a { color: rgba(255,255,255,.6); font-size: 14px; font-weight: 500; transition: color .15s; }
+    .nav-links a:hover { color: #fff; }
+    .nav-right { display: flex; align-items: center; gap: 10px; }
+    .btn-nav-ghost { color: rgba(255,255,255,.65); font-size: 13px; padding: 7px 16px; border-radius: 8px; font-weight: 500; transition: background .15s; }
+    .btn-nav-ghost:hover { background: rgba(255,255,255,.08); color: #fff; }
+    .btn-nav-primary { background: var(--blue); color: #fff; font-size: 13px; font-weight: 600; padding: 8px 20px; border-radius: 8px; transition: background .15s, transform .1s; }
+    .btn-nav-primary:hover { background: var(--accent-dark); transform: translateY(-1px); }
+
+    /* ── Hero ─────────────────────────────────────────────────────────────── */
+    .hero {
+      background: var(--navy);
+      min-height: 100vh; display: flex; flex-direction: column; align-items: center;
+      justify-content: center; text-align: center;
+      padding: 130px 24px 80px; position: relative; overflow: hidden;
+    }
+    .hero-glow-1 { position: absolute; top: -180px; left: 50%; transform: translateX(-50%); width: 1000px; height: 700px; background: radial-gradient(ellipse, rgba(79,142,247,.22) 0%, transparent 65%); pointer-events: none; }
+    .hero-glow-2 { position: absolute; bottom: -80px; left: -100px; width: 500px; height: 500px; background: radial-gradient(ellipse, rgba(62,207,178,.1) 0%, transparent 65%); pointer-events: none; }
+    .hero-glow-3 { position: absolute; top: 30%; right: -80px; width: 400px; height: 400px; background: radial-gradient(ellipse, rgba(124,92,191,.12) 0%, transparent 65%); pointer-events: none; }
+
+    .hero-eyebrow {
+      display: inline-flex; align-items: center; gap: 8px;
+      border: 1px solid rgba(79,142,247,.35); background: rgba(79,142,247,.1);
+      color: #93bbfc; font-size: 12px; font-weight: 600; padding: 5px 14px;
+      border-radius: 20px; margin-bottom: 32px; letter-spacing: .05em; text-transform: uppercase;
+    }
+    .hero-eyebrow .pulse { width: 6px; height: 6px; border-radius: 50%; background: #4f8ef7; animation: pulse 2s infinite; }
+    @keyframes pulse { 0%,100%{opacity:1}50%{opacity:.4} }
+
+    .hero h1 {
+      font-size: clamp(42px, 6.5vw, 80px); font-weight: 900; color: #fff;
+      line-height: 1.05; letter-spacing: -2px; max-width: 880px; margin-bottom: 24px;
+    }
+    .hero h1 .grad { background: linear-gradient(135deg, #4f8ef7 0%, #a78bfa 50%, #3ecfb2 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+
+    .hero-sub { font-size: 18px; color: rgba(255,255,255,.55); max-width: 580px; line-height: 1.7; margin-bottom: 44px; }
+
+    .hero-ctas { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin-bottom: 64px; }
+    .btn-hero-primary {
+      background: var(--blue); color: #fff; font-size: 15px; font-weight: 700;
+      padding: 14px 30px; border-radius: 10px; display: flex; align-items: center; gap: 8px;
+      transition: background .15s, transform .15s, box-shadow .15s;
+    }
+    .btn-hero-primary:hover { background: var(--accent-dark); transform: translateY(-2px); box-shadow: 0 12px 36px rgba(79,142,247,.4); }
+    .btn-hero-secondary {
+      background: rgba(255,255,255,.07); color: rgba(255,255,255,.8); font-size: 15px; font-weight: 500;
+      padding: 14px 30px; border-radius: 10px; border: 1px solid rgba(255,255,255,.12);
+      transition: background .15s;
+    }
+    .btn-hero-secondary:hover { background: rgba(255,255,255,.12); }
+
+    /* Connected tools strip */
+    .hero-tools {
+      display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: center;
+      padding: 18px 28px; border-radius: 16px;
+      background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.08);
+      max-width: 820px; width: 100%;
+    }
+    .hero-tools-label { font-size: 11px; font-weight: 600; color: rgba(255,255,255,.3); text-transform: uppercase; letter-spacing: .08em; margin-right: 8px; }
+    .tool-chip {
+      display: flex; align-items: center; gap: 6px; padding: 6px 14px;
+      background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.09);
+      border-radius: 8px; color: rgba(255,255,255,.65); font-size: 12px; font-weight: 500;
+      transition: background .15s, border-color .15s;
+    }
+    .tool-chip:hover { background: rgba(79,142,247,.2); border-color: rgba(79,142,247,.4); color: #fff; }
+
+    /* ── Section commons ──────────────────────────────────────────────────── */
+    .section { padding: 96px 48px; }
+    .section-inner { max-width: 1160px; margin: 0 auto; }
+    .section-eyebrow { font-size: 12px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--accent); margin-bottom: 12px; }
+    .section-h { font-size: clamp(28px,3.5vw,46px); font-weight: 800; letter-spacing: -1px; line-height: 1.12; color: var(--text); margin-bottom: 14px; }
+    .section-sub { font-size: 17px; color: var(--text-muted); max-width: 560px; line-height: 1.7; }
+    .section-header { margin-bottom: 56px; }
+    .section-header.center { text-align: center; }
+    .section-header.center .section-sub { margin: 0 auto; }
+
+    /* ── Workflows grid ───────────────────────────────────────────────────── */
+    .workflows-section { background: var(--white); }
+    .workflows-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 16px; }
+    .wf-card {
+      background: var(--white); border: 1.5px solid var(--border); border-radius: var(--radius);
+      padding: 24px; cursor: pointer; transition: border-color .2s, box-shadow .2s, transform .15s;
+      position: relative; overflow: hidden;
+    }
+    .wf-card::after {
+      content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
+      background: linear-gradient(90deg, var(--blue), var(--purple));
+      transform: scaleX(0); transition: transform .2s;
+    }
+    .wf-card:hover { border-color: #c7d9f8; box-shadow: var(--shadow-lg); transform: translateY(-3px); }
+    .wf-card:hover::after { transform: scaleX(1); }
+    .wf-icon { font-size: 28px; margin-bottom: 14px; }
+    .wf-name { font-size: 14px; font-weight: 700; color: var(--text); margin-bottom: 6px; }
+    .wf-desc { font-size: 12px; color: var(--text-muted); line-height: 1.6; }
+    .wf-tags { display: flex; gap: 5px; margin-top: 12px; flex-wrap: wrap; }
+    .wf-tag { font-size: 10px; font-weight: 600; padding: 2px 8px; border-radius: 6px; background: var(--surface); border: 1px solid var(--border); color: var(--text-muted); }
+
+    /* ── Connectors section ───────────────────────────────────────────────── */
+    .connectors-section { background: var(--surface); }
+    .connectors-tabs { display: flex; gap: 8px; margin-bottom: 40px; flex-wrap: wrap; }
+    .ctab {
+      padding: 8px 18px; border-radius: 8px; font-size: 13px; font-weight: 600;
+      border: 1.5px solid var(--border); color: var(--text-muted); cursor: pointer;
+      transition: all .15s; background: var(--white);
+    }
+    .ctab.active { background: var(--navy); color: #fff; border-color: var(--navy); }
+    .connectors-grid { display: grid; grid-template-columns: repeat(6,1fr); gap: 12px; }
+    .conn-card {
+      background: var(--white); border: 1.5px solid var(--border); border-radius: 12px;
+      padding: 20px 16px; text-align: center; transition: border-color .2s, box-shadow .2s, transform .15s;
+    }
+    .conn-card:hover { border-color: #c7d9f8; box-shadow: var(--shadow); transform: translateY(-2px); }
+    .conn-icon { font-size: 26px; margin-bottom: 8px; }
+    .conn-name { font-size: 12px; font-weight: 600; color: var(--text); margin-bottom: 3px; }
+    .conn-type { font-size: 10px; color: var(--text-muted); }
+    .conn-status { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: #22c55e; margin-bottom: 6px; }
+    .conn-status.soon { background: #f59e0b; }
+
+    /* ── How it works ─────────────────────────────────────────────────────── */
+    .how-section { background: var(--navy); }
+    .how-section .section-eyebrow { color: #93bbfc; }
+    .how-section .section-h { color: #fff; }
+    .how-section .section-sub { color: rgba(255,255,255,.5); }
+    .steps-row { display: grid; grid-template-columns: repeat(3,1fr); gap: 28px; margin-top: 56px; }
+    .step-card {
+      background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.08);
+      border-radius: var(--radius); padding: 32px 28px;
+      transition: background .2s, border-color .2s;
+    }
+    .step-card:hover { background: rgba(79,142,247,.08); border-color: rgba(79,142,247,.3); }
+    .step-num {
+      width: 40px; height: 40px; border-radius: 10px;
+      background: rgba(79,142,247,.2); border: 1px solid rgba(79,142,247,.35);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 16px; font-weight: 800; color: #93bbfc; margin-bottom: 20px;
+    }
+    .step-card h3 { font-size: 17px; font-weight: 700; color: #fff; margin-bottom: 10px; }
+    .step-card p { font-size: 13px; color: rgba(255,255,255,.5); line-height: 1.75; }
+
+    /* ── Governance ───────────────────────────────────────────────────────── */
+    .gov-section { background: var(--white); }
+    .gov-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 80px; align-items: center; }
+    .gov-tiers { display: flex; flex-direction: column; gap: 10px; margin-top: 28px; }
+    .gov-tier {
+      display: flex; align-items: flex-start; gap: 14px; padding: 14px 18px;
+      border-radius: 10px; border: 1.5px solid var(--border); background: var(--surface);
+      transition: border-color .15s;
+    }
+    .gov-tier:hover { border-color: #c7d9f8; }
+    .tier-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; margin-top: 5px; }
+    .tier-name { font-size: 13px; font-weight: 700; margin-bottom: 2px; }
+    .tier-desc { font-size: 12px; color: var(--text-muted); }
+    .gov-visual { background: var(--navy); border-radius: var(--radius); padding: 28px; }
+    .gov-row {
+      display: flex; align-items: center; gap: 10px; padding: 11px 14px;
+      background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.07);
+      border-radius: 8px; margin-bottom: 8px; font-size: 12px; color: rgba(255,255,255,.7);
+    }
+    .gov-badge { font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 20px; margin-left: auto; white-space: nowrap; }
+    .badge-pub { background: #dcfce7; color: #15803d; }
+    .badge-int { background: #fef3c7; color: #92400e; }
+    .badge-conf { background: #fee2e2; color: #991b1b; }
+
+    /* ── Stats / Proof ────────────────────────────────────────────────────── */
+    .proof-section { background: var(--surface); text-align: center; }
+    .stats-row { display: flex; justify-content: center; gap: 72px; flex-wrap: wrap; margin-bottom: 72px; }
+    .stat-num { font-size: 48px; font-weight: 900; letter-spacing: -2px; background: linear-gradient(135deg,#4f8ef7,#a78bfa); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
+    .stat-label { font-size: 14px; color: var(--text-muted); margin-top: 4px; }
+    .quotes-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 20px; text-align: left; }
+    .quote-card {
+      background: var(--white); border: 1.5px solid var(--border); border-radius: var(--radius);
+      padding: 28px; transition: box-shadow .2s;
+    }
+    .quote-card:hover { box-shadow: var(--shadow-lg); }
+    .quote-stars { color: #f59e0b; font-size: 14px; margin-bottom: 14px; letter-spacing: 2px; }
+    .quote-text { font-size: 14px; color: var(--text-muted); line-height: 1.75; font-style: italic; margin-bottom: 20px; }
+    .quote-author { display: flex; align-items: center; gap: 10px; }
+    .quote-avatar { width: 36px; height: 36px; border-radius: 50%; background: linear-gradient(135deg,#4f8ef7,#7c5cbf); display: flex; align-items: center; justify-content: center; color: #fff; font-weight: 700; font-size: 13px; flex-shrink: 0; }
+    .quote-name { font-size: 13px; font-weight: 600; }
+    .quote-role { font-size: 11px; color: var(--text-muted); }
+
+    /* ── CTA ──────────────────────────────────────────────────────────────── */
+    .cta-section { background: var(--navy); text-align: center; padding: 96px 48px; position: relative; overflow: hidden; }
+    .cta-section::before { content: ''; position: absolute; top: -200px; left: 50%; transform: translateX(-50%); width: 800px; height: 600px; background: radial-gradient(ellipse, rgba(79,142,247,.25) 0%, transparent 65%); pointer-events: none; }
+    .cta-section h2 { font-size: clamp(30px,4vw,52px); font-weight: 900; color: #fff; letter-spacing: -1.5px; margin-bottom: 16px; position: relative; }
+    .cta-section p { font-size: 17px; color: rgba(255,255,255,.55); max-width: 480px; margin: 0 auto 36px; line-height: 1.7; position: relative; }
+    .btn-cta { display: inline-flex; align-items: center; gap: 8px; background: var(--blue); color: #fff; font-size: 15px; font-weight: 700; padding: 15px 32px; border-radius: 10px; transition: background .15s, transform .15s, box-shadow .15s; position: relative; }
+    .btn-cta:hover { background: var(--accent-dark); transform: translateY(-2px); box-shadow: 0 12px 40px rgba(79,142,247,.4); }
+
+    /* ── Footer ───────────────────────────────────────────────────────────── */
+    footer { background: #070e1c; padding: 56px 48px 32px; border-top: 1px solid rgba(255,255,255,.05); }
+    .footer-inner { max-width: 1160px; margin: 0 auto; }
+    .footer-top { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr 1fr; gap: 40px; margin-bottom: 48px; }
+    .footer-brand p { font-size: 13px; color: rgba(255,255,255,.35); line-height: 1.7; margin-top: 14px; max-width: 240px; }
+    .footer-col h4 { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: rgba(255,255,255,.3); margin-bottom: 16px; }
+    .footer-col a { display: block; font-size: 13px; color: rgba(255,255,255,.5); margin-bottom: 10px; transition: color .12s; }
+    .footer-col a:hover { color: #fff; }
+    .footer-bottom { border-top: 1px solid rgba(255,255,255,.06); padding-top: 24px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; }
+    .footer-bottom p { font-size: 12px; color: rgba(255,255,255,.25); }
+
+    /* ── Responsive ───────────────────────────────────────────────────────── */
+    @media(max-width:1024px){
+      .workflows-grid { grid-template-columns: repeat(2,1fr); }
+      .connectors-grid { grid-template-columns: repeat(4,1fr); }
+      .footer-top { grid-template-columns: 1fr 1fr; }
+    }
+    @media(max-width:768px){
+      nav { padding: 0 20px; }
+      .nav-links { display: none; }
+      .section { padding: 64px 20px; }
+      .workflows-grid, .steps-row, .quotes-grid { grid-template-columns: 1fr; }
+      .gov-layout { grid-template-columns: 1fr; }
+      .connectors-grid { grid-template-columns: repeat(3,1fr); }
+      .stats-row { gap: 32px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ── NAV ────────────────────────────────────────────────────────────────── -->
+<nav>
+  <a href="/" class="nav-brand logo-mark">
+    <svg class="logo-svg" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <rect width="36" height="36" rx="8" fill="#0b1221"/>
+      <circle cx="12" cy="12" r="3.5" fill="white"/>
+      <path d="M12 18L26 13L26 17L12 22L12 18Z" fill="url(#b1)" rx="2"/>
+      <path d="M12 22L26 17L26 21L12 26L12 22Z" fill="url(#b2)" rx="2"/>
+      <path d="M12 14L26 9L26 13L12 18L12 14Z" fill="url(#b3)" rx="2"/>
+      <defs>
+        <linearGradient id="b3" x1="12" y1="11" x2="26" y2="11" gradientUnits="userSpaceOnUse">
+          <stop stop-color="#4f8ef7"/><stop offset="1" stop-color="#6ba3f8"/>
+        </linearGradient>
+        <linearGradient id="b1" x1="12" y1="20" x2="26" y2="20" gradientUnits="userSpaceOnUse">
+          <stop stop-color="#7c5cbf"/><stop offset="1" stop-color="#9b7de0"/>
+        </linearGradient>
+        <linearGradient id="b2" x1="12" y1="24" x2="26" y2="24" gradientUnits="userSpaceOnUse">
+          <stop stop-color="#3ecfb2"/><stop offset="1" stop-color="#5de0c5"/>
+        </linearGradient>
+      </defs>
+    </svg>
+    <span>pm<em>GPT</em></span>
+  </a>
+  <div class="nav-links">
+    <a href="#workflows">Workflows</a>
+    <a href="#connectors">Connectors</a>
+    <a href="#how">How it works</a>
+    <a href="#security">Security</a>
+  </div>
+  <div class="nav-right">
+    <a href="/app" class="btn-nav-ghost">Sign in</a>
+    <a href="/app" class="btn-nav-primary">Get Started →</a>
+  </div>
+</nav>
+
+<!-- ── HERO ───────────────────────────────────────────────────────────────── -->
+<section class="hero">
+  <div class="hero-glow-1"></div>
+  <div class="hero-glow-2"></div>
+  <div class="hero-glow-3"></div>
+
+  <div class="hero-eyebrow"><span class="pulse"></span> Now in public beta · Free to try</div>
+
+  <h1>The Product OS<br>for <span class="grad">Modern Teams</span></h1>
+
+  <p class="hero-sub">Run your entire product function on AI. From sprint planning to GTM strategy — pmGPT connects your tools, understands your context, and executes like a senior PM.</p>
+
+  <div class="hero-ctas">
+    <a href="/app" class="btn-hero-primary">🚀 Start Free</a>
+    <a href="#workflows" class="btn-hero-secondary">Explore workflows →</a>
+  </div>
+
+  <div class="hero-tools">
+    <span class="hero-tools-label">Connected to</span>
+    <div class="tool-chip">🎯 Jira</div>
+    <div class="tool-chip">📘 Confluence</div>
+    <div class="tool-chip">💬 Slack</div>
+    <div class="tool-chip">⬜ Notion</div>
+    <div class="tool-chip">📁 Google Drive</div>
+    <div class="tool-chip">📅 Google Calendar</div>
+    <div class="tool-chip">🌐 + Web Research</div>
+  </div>
+</section>
+
+<!-- ── WORKFLOWS ──────────────────────────────────────────────────────────── -->
+<section class="section workflows-section" id="workflows">
+  <div class="section-inner">
+    <div class="section-header center">
+      <div class="section-eyebrow">Workflows</div>
+      <h2 class="section-h">Everything a PM does. Now on autopilot.</h2>
+      <p class="section-sub">Purpose-built AI agents for every product workflow — auto-detected from your query, live data pulled from your tools.</p>
+    </div>
+    <div class="workflows-grid">
+
+      <div class="wf-card">
+        <div class="wf-icon">🏃</div>
+        <div class="wf-name">Sprint Planning</div>
+        <div class="wf-desc">Analyze sprint health, surface blockers, predict spillovers, and auto-write sprint goals from your Jira data.</div>
+        <div class="wf-tags"><span class="wf-tag">🎯 Jira</span><span class="wf-tag">📅 Calendar</span></div>
+      </div>
+
+      <div class="wf-card">
+        <div class="wf-icon">📄</div>
+        <div class="wf-name">PRD Generation</div>
+        <div class="wf-desc">Turn a one-line brief into a full Product Requirements Document with context pulled from Confluence, Notion, and Drive.</div>
+        <div class="wf-tags"><span class="wf-tag">📘 Confluence</span><span class="wf-tag">📁 Drive</span></div>
+      </div>
+
+      <div class="wf-card">
+        <div class="wf-icon">🔍</div>
+        <div class="wf-name">Market Research</div>
+        <div class="wf-desc">Deep research on your market, customers, and opportunities — synthesized from live web sources and your internal docs.</div>
+        <div class="wf-tags"><span class="wf-tag">🌐 Web</span><span class="wf-tag">📁 Drive</span></div>
+      </div>
+
+      <div class="wf-card">
+        <div class="wf-icon">⚔️</div>
+        <div class="wf-name">Competitive Analysis</div>
+        <div class="wf-desc">Monitor competitors, compare feature sets, positioning, and pricing — structured into battle cards and executive summaries.</div>
+        <div class="wf-tags"><span class="wf-tag">🌐 Web</span><span class="wf-tag">⬜ Notion</span></div>
+      </div>
+
+      <div class="wf-card">
+        <div class="wf-icon">🚀</div>
+        <div class="wf-name">GTM Strategy</div>
+        <div class="wf-desc">Build go-to-market plans with positioning, ICP definition, launch timelines, and channel strategy — ready to present.</div>
+        <div class="wf-tags"><span class="wf-tag">🌐 Web</span><span class="wf-tag">📁 Drive</span></div>
+      </div>
+
+      <div class="wf-card">
+        <div class="wf-icon">⚖️</div>
+        <div class="wf-name">Prioritization Frameworks</div>
+        <div class="wf-desc">Apply RICE, ICE, MoSCoW, Kano, or custom frameworks to your backlog and get ranked outputs with rationale.</div>
+        <div class="wf-tags"><span class="wf-tag">🎯 Jira</span><span class="wf-tag">⬜ Notion</span></div>
+      </div>
+
+      <div class="wf-card">
+        <div class="wf-icon">🎫</div>
+        <div class="wf-name">Ticket Creation</div>
+        <div class="wf-desc">Auto-create Jira tickets with acceptance criteria, story points, and labels directly from a PRD or feature description.</div>
+        <div class="wf-tags"><span class="wf-tag">🎯 Jira</span></div>
+      </div>
+
+      <div class="wf-card">
+        <div class="wf-icon">📊</div>
+        <div class="wf-name">Analytics Intelligence</div>
+        <div class="wf-desc">Interpret KPIs, retention curves, funnels, and A/B test results — translated into actionable product decisions.</div>
+        <div class="wf-tags"><span class="wf-tag">🌐 Web</span><span class="wf-tag">📁 Drive</span></div>
+      </div>
+
+      <div class="wf-card">
+        <div class="wf-icon">💬</div>
+        <div class="wf-name">Customer Feedback</div>
+        <div class="wf-desc">Aggregate, theme, and synthesize customer feedback from Slack, Notion, and uploaded transcripts into insight reports.</div>
+        <div class="wf-tags"><span class="wf-tag">💬 Slack</span><span class="wf-tag">⬜ Notion</span></div>
+      </div>
+
+      <div class="wf-card">
+        <div class="wf-icon">🧠</div>
+        <div class="wf-name">User Behavior Analysis</div>
+        <div class="wf-desc">Interpret session recordings, heatmaps, and behavioral data to identify friction points and conversion opportunities.</div>
+        <div class="wf-tags"><span class="wf-tag">📁 Drive</span><span class="wf-tag">🌐 Web</span></div>
+      </div>
+
+      <div class="wf-card">
+        <div class="wf-icon">🗺️</div>
+        <div class="wf-name">Product Roadmap</div>
+        <div class="wf-desc">Build now/next/later or theme-based roadmaps aligned to OKRs — structured, visual-ready, and stakeholder-proof.</div>
+        <div class="wf-tags"><span class="wf-tag">⬜ Notion</span><span class="wf-tag">📘 Confluence</span></div>
+      </div>
+
+      <div class="wf-card">
+        <div class="wf-icon">🎯</div>
+        <div class="wf-name">Product Vision & Strategy</div>
+        <div class="wf-desc">Craft compelling product vision narratives, OKR trees, and north star frameworks from competitive and market context.</div>
+        <div class="wf-tags"><span class="wf-tag">🌐 Web</span><span class="wf-tag">📁 Drive</span></div>
+      </div>
+
+      <div class="wf-card">
+        <div class="wf-icon">🏗️</div>
+        <div class="wf-name">Architecture Documents</div>
+        <div class="wf-desc">Generate system design docs, API contracts, and technical specs that bridge PM requirements and engineering execution.</div>
+        <div class="wf-tags"><span class="wf-tag">📘 Confluence</span><span class="wf-tag">📁 Drive</span></div>
+      </div>
+
+      <div class="wf-card">
+        <div class="wf-icon">💼</div>
+        <div class="wf-name">Sales Collateral</div>
+        <div class="wf-desc">Create one-pagers, pitch decks, battle cards, and feature briefs that enable your sales team to win deals faster.</div>
+        <div class="wf-tags"><span class="wf-tag">📁 Drive</span><span class="wf-tag">🌐 Web</span></div>
+      </div>
+
+      <div class="wf-card">
+        <div class="wf-icon">☀️</div>
+        <div class="wf-name">Daily Standup</div>
+        <div class="wf-desc">Auto-generate standup updates from Jira activity, Slack threads, and today's calendar — in 10 seconds flat.</div>
+        <div class="wf-tags"><span class="wf-tag">🎯 Jira</span><span class="wf-tag">💬 Slack</span><span class="wf-tag">📅 Calendar</span></div>
+      </div>
+
+      <div class="wf-card">
+        <div class="wf-icon">💡</div>
+        <div class="wf-name">PM Career Coach</div>
+        <div class="wf-desc">Review your resume, prep for interviews, analyze job descriptions, and build a portfolio that gets you hired.</div>
+        <div class="wf-tags"><span class="wf-tag">🌐 Web</span><span class="wf-tag">📁 Drive</span></div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ── CONNECTORS ─────────────────────────────────────────────────────────── -->
+<section class="section connectors-section" id="connectors">
+  <div class="section-inner">
+    <div class="section-header">
+      <div class="section-eyebrow">Connectors & Sources</div>
+      <h2 class="section-h">Connected to everything your team uses.</h2>
+      <p class="section-sub">Native integrations with your tools, plus live web access through Claude and GPT-4 for real-time research.</p>
+    </div>
+
+    <div class="connectors-tabs" id="connTabs">
+      <div class="ctab active" onclick="filterConn('all',this)">All</div>
+      <div class="ctab" onclick="filterConn('pm',this)">PM Tools</div>
+      <div class="ctab" onclick="filterConn('google',this)">Google</div>
+      <div class="ctab" onclick="filterConn('web',this)">Web & AI</div>
+      <div class="ctab" onclick="filterConn('comms',this)">Comms</div>
+    </div>
+
+    <div class="connectors-grid" id="connGrid">
+      <!-- PM Tools -->
+      <div class="conn-card" data-cat="pm"><div class="conn-status"></div><div class="conn-icon">🎯</div><div class="conn-name">Jira</div><div class="conn-type">Issue tracking</div></div>
+      <div class="conn-card" data-cat="pm"><div class="conn-status"></div><div class="conn-icon">📘</div><div class="conn-name">Confluence</div><div class="conn-type">Documentation</div></div>
+      <div class="conn-card" data-cat="pm"><div class="conn-status"></div><div class="conn-icon">⬜</div><div class="conn-name">Notion</div><div class="conn-type">Workspace</div></div>
+      <div class="conn-card" data-cat="pm"><div class="conn-status soon"></div><div class="conn-icon">📐</div><div class="conn-name">Linear</div><div class="conn-type">Coming soon</div></div>
+      <div class="conn-card" data-cat="pm"><div class="conn-status soon"></div><div class="conn-icon">🔷</div><div class="conn-name">Asana</div><div class="conn-type">Coming soon</div></div>
+      <div class="conn-card" data-cat="pm"><div class="conn-status soon"></div><div class="conn-icon">📋</div><div class="conn-name">Monday</div><div class="conn-type">Coming soon</div></div>
+      <!-- Google -->
+      <div class="conn-card" data-cat="google"><div class="conn-status"></div><div class="conn-icon">📁</div><div class="conn-name">Google Drive</div><div class="conn-type">File storage</div></div>
+      <div class="conn-card" data-cat="google"><div class="conn-status"></div><div class="conn-icon">📅</div><div class="conn-name">Google Calendar</div><div class="conn-type">Scheduling</div></div>
+      <div class="conn-card" data-cat="google"><div class="conn-status soon"></div><div class="conn-icon">📊</div><div class="conn-name">Google Sheets</div><div class="conn-type">Coming soon</div></div>
+      <div class="conn-card" data-cat="google"><div class="conn-status soon"></div><div class="conn-icon">📧</div><div class="conn-name">Gmail</div><div class="conn-type">Coming soon</div></div>
+      <!-- Comms -->
+      <div class="conn-card" data-cat="comms"><div class="conn-status"></div><div class="conn-icon">💬</div><div class="conn-name">Slack</div><div class="conn-type">Messaging</div></div>
+      <div class="conn-card" data-cat="comms"><div class="conn-status soon"></div><div class="conn-icon">🔵</div><div class="conn-name">Microsoft Teams</div><div class="conn-type">Coming soon</div></div>
+      <!-- Web & AI -->
+      <div class="conn-card" data-cat="web"><div class="conn-status"></div><div class="conn-icon">🌐</div><div class="conn-name">Web Search</div><div class="conn-type">Live research</div></div>
+      <div class="conn-card" data-cat="web"><div class="conn-status"></div><div class="conn-icon">🤖</div><div class="conn-name">Claude AI</div><div class="conn-type">Anthropic</div></div>
+      <div class="conn-card" data-cat="web"><div class="conn-status"></div><div class="conn-icon">⚡</div><div class="conn-name">Ollama</div><div class="conn-type">Local LLM</div></div>
+      <div class="conn-card" data-cat="web"><div class="conn-status soon"></div><div class="conn-icon">🟢</div><div class="conn-name">OpenAI</div><div class="conn-type">Coming soon</div></div>
+      <div class="conn-card" data-cat="web"><div class="conn-status soon"></div><div class="conn-icon">📰</div><div class="conn-name">G2 Reviews</div><div class="conn-type">Web · Research</div></div>
+      <div class="conn-card" data-cat="web"><div class="conn-status soon"></div><div class="conn-icon">🔗</div><div class="conn-name">LinkedIn</div><div class="conn-type">Web · Research</div></div>
+      <div class="conn-card" data-cat="web"><div class="conn-status soon"></div><div class="conn-icon">🐦</div><div class="conn-name">Twitter / X</div><div class="conn-type">Web · Research</div></div>
+      <div class="conn-card" data-cat="web"><div class="conn-status soon"></div><div class="conn-icon">📌</div><div class="conn-name">Product Hunt</div><div class="conn-type">Web · Research</div></div>
+      <div class="conn-card" data-cat="web"><div class="conn-status soon"></div><div class="conn-icon">🟠</div><div class="conn-name">HN / Reddit</div><div class="conn-type">Web · Research</div></div>
+      <div class="conn-card" data-cat="web"><div class="conn-status soon"></div><div class="conn-icon">📈</div><div class="conn-name">Crunchbase</div><div class="conn-type">Web · Research</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ── HOW IT WORKS ────────────────────────────────────────────────────────── -->
+<section class="section how-section" id="how">
+  <div class="section-inner">
+    <div class="section-header">
+      <div class="section-eyebrow">How it works</div>
+      <h2 class="section-h">Ask. Fetch. Execute.</h2>
+      <p class="section-sub">Just describe what you need in plain English. pmGPT routes to the right agent, pulls live data, and delivers a structured output.</p>
+    </div>
+    <div class="steps-row">
+      <div class="step-card">
+        <div class="step-num">1</div>
+        <h3>Describe your task</h3>
+        <p>Type naturally — "write a PRD for dark mode", "summarize my sprint", "what are competitors doing on pricing". Intent is auto-detected, no configuration needed.</p>
+      </div>
+      <div class="step-card">
+        <div class="step-num">2</div>
+        <h3>Live context pulled in</h3>
+        <p>The right agent fetches real-time data from your connected tools — Jira tickets, Confluence pages, Slack threads, Drive docs, Calendar events, and the web.</p>
+      </div>
+      <div class="step-card">
+        <div class="step-num">3</div>
+        <h3>Structured output delivered</h3>
+        <p>Get a markdown-formatted response with source links, citations, action items, and next steps — ready to paste into Confluence, Notion, or Slack in one click.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── SECURITY ────────────────────────────────────────────────────────────── -->
+<section class="section gov-section" id="security">
+  <div class="section-inner">
+    <div class="gov-layout">
+      <div>
+        <div class="section-eyebrow">Data Privacy</div>
+        <h2 class="section-h">Enterprise-grade privacy. Zero compromise.</h2>
+        <p class="section-sub" style="margin-bottom:0">pmGPT classifies every data field before routing to any LLM. Sensitive data never leaves your environment — it routes to a local model instead.</p>
+        <div class="gov-tiers">
+          <div class="gov-tier"><div class="tier-dot" style="background:#22c55e"></div><div><div class="tier-name">Public</div><div class="tier-desc">Ticket status, timestamps, priorities → Claude API</div></div></div>
+          <div class="gov-tier"><div class="tier-dot" style="background:#f59e0b"></div><div><div class="tier-name">Internal</div><div class="tier-desc">Summaries, titles, descriptions → Local LLM only</div></div></div>
+          <div class="gov-tier"><div class="tier-dot" style="background:#ef4444"></div><div><div class="tier-name">Confidential</div><div class="tier-desc">Names, emails, assignees → Tokenized before any LLM</div></div></div>
+          <div class="gov-tier"><div class="tier-dot" style="background:#8b5cf6"></div><div><div class="tier-name">Restricted</div><div class="tier-desc">Flagged fields → Template rendering only, no LLM</div></div></div>
+        </div>
+      </div>
+      <div class="gov-visual">
+        <div style="font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:rgba(255,255,255,.3);margin-bottom:12px;">Live field classification</div>
+        <div class="gov-row">🎫 <span>Status: <b style="color:#fff">In Progress</b></span><span class="gov-badge badge-pub">Public → Claude</span></div>
+        <div class="gov-row">📝 <span>Summary: <b style="color:#fff">Search revamp</b></span><span class="gov-badge badge-int">Internal → Local</span></div>
+        <div class="gov-row">👤 <span>Assignee: <b style="color:#fff">Aashish G.</b></span><span class="gov-badge badge-conf">Confidential → Token</span></div>
+        <div class="gov-row">💬 <span>Comments: <b style="color:#fff">3 threads</b></span><span class="gov-badge badge-conf">Confidential → Token</span></div>
+        <div style="margin-top:10px;padding:12px 14px;background:rgba(79,142,247,.12);border-radius:8px;border:1px solid rgba(79,142,247,.25);font-size:12px;color:#93bbfc;">
+          ✅ Response generated — PII re-injected locally, never sent externally
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── PROOF ───────────────────────────────────────────────────────────────── -->
+<section class="section proof-section">
+  <div class="section-inner">
+    <div class="section-header center">
+      <div class="section-eyebrow">Built for real PMs</div>
+      <h2 class="section-h">The numbers speak for themselves</h2>
+    </div>
+    <div class="stats-row">
+      <div><div class="stat-num">16+</div><div class="stat-label">PM workflows automated</div></div>
+      <div><div class="stat-num">7+</div><div class="stat-num" style="font-size:48px"></div><div class="stat-label">Native integrations</div></div>
+      <div><div class="stat-num">4</div><div class="stat-label">Data privacy tiers</div></div>
+      <div><div class="stat-num">∞</div><div class="stat-label">Hours saved per sprint</div></div>
+    </div>
+    <div class="quotes-grid">
+      <div class="quote-card">
+        <div class="quote-stars">★★★★★</div>
+        <div class="quote-text">"I used to spend 45 minutes every morning syncing Jira, Slack, and my notes for standup. pmGPT does it in under 10 seconds with source links."</div>
+        <div class="quote-author"><div class="quote-avatar">S</div><div><div class="quote-name">Sarah K.</div><div class="quote-role">Senior PM · B2B SaaS</div></div></div>
+      </div>
+      <div class="quote-card">
+        <div class="quote-stars">★★★★★</div>
+        <div class="quote-text">"The PRD generator is incredible. One line brief → full doc with context pulled from our Confluence. What took me 3 hours now takes 3 minutes."</div>
+        <div class="quote-author"><div class="quote-avatar">R</div><div><div class="quote-name">Raj M.</div><div class="quote-role">Product Lead · Fintech</div></div></div>
+      </div>
+      <div class="quote-card">
+        <div class="quote-stars">★★★★★</div>
+        <div class="quote-text">"Finally an AI product tool that takes data privacy seriously. Confidential fields never hit an external LLM — that's a non-negotiable for us in healthcare."</div>
+        <div class="quote-author"><div class="quote-avatar">L</div><div><div class="quote-name">Laura T.</div><div class="quote-role">Head of Product · Healthcare</div></div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── CTA ─────────────────────────────────────────────────────────────────── -->
+<section class="cta-section">
+  <h2>Ready to run your product<br>function on AI?</h2>
+  <p>Connect your tools in minutes. Get your first standup, PRD, or competitive analysis instantly — free.</p>
+  <a href="/app" class="btn-cta">🚀 Get Started Free →</a>
+</section>
+
+<!-- ── FOOTER ─────────────────────────────────────────────────────────────── -->
+<footer>
+  <div class="footer-inner">
+    <div class="footer-top">
+      <div class="footer-brand">
+        <a href="/" class="logo-mark" style="text-decoration:none">
+          <svg class="logo-svg" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect width="36" height="36" rx="8" fill="#0b1221"/>
+            <circle cx="12" cy="12" r="3.5" fill="white"/>
+            <path d="M12 18L26 13L26 17L12 22L12 18Z" fill="url(#f1)"/>
+            <path d="M12 22L26 17L26 21L12 26L12 22Z" fill="url(#f2)"/>
+            <path d="M12 14L26 9L26 13L12 18L12 14Z" fill="url(#f3)"/>
+            <defs>
+              <linearGradient id="f3" x1="12" y1="11" x2="26" y2="11" gradientUnits="userSpaceOnUse"><stop stop-color="#4f8ef7"/><stop offset="1" stop-color="#6ba3f8"/></linearGradient>
+              <linearGradient id="f1" x1="12" y1="20" x2="26" y2="20" gradientUnits="userSpaceOnUse"><stop stop-color="#7c5cbf"/><stop offset="1" stop-color="#9b7de0"/></linearGradient>
+              <linearGradient id="f2" x1="12" y1="24" x2="26" y2="24" gradientUnits="userSpaceOnUse"><stop stop-color="#3ecfb2"/><stop offset="1" stop-color="#5de0c5"/></linearGradient>
+            </defs>
+          </svg>
+          <span style="font-weight:800;font-size:17px;color:#fff;letter-spacing:-.3px">pm<span style="background:linear-gradient(90deg,#4f8ef7,#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text">GPT</span></span>
+        </a>
+        <p>The Product OS for Modern Teams. Run your entire product function on AI.</p>
+      </div>
+      <div class="footer-col">
+        <h4>Product</h4>
+        <a href="#workflows">Workflows</a>
+        <a href="#connectors">Connectors</a>
+        <a href="#how">How it works</a>
+        <a href="#security">Security</a>
+        <a href="/app">Launch App</a>
+      </div>
+      <div class="footer-col">
+        <h4>Integrations</h4>
+        <a href="#">Jira</a>
+        <a href="#">Confluence</a>
+        <a href="#">Slack</a>
+        <a href="#">Notion</a>
+        <a href="#">Google Drive</a>
+        <a href="#">Google Calendar</a>
+      </div>
+      <div class="footer-col">
+        <h4>Workflows</h4>
+        <a href="/app">Sprint Planning</a>
+        <a href="/app">PRD Generator</a>
+        <a href="/app">Competitive Analysis</a>
+        <a href="/app">GTM Strategy</a>
+        <a href="/app">Roadmap Builder</a>
+        <a href="/app">Daily Standup</a>
+      </div>
+      <div class="footer-col">
+        <h4>Company</h4>
+        <a href="#">About</a>
+        <a href="#">Blog</a>
+        <a href="#">Careers</a>
+        <a href="#">Privacy</a>
+        <a href="#">Terms</a>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <p>© 2025 pmGPT. Built for product managers who move fast.</p>
+      <p>Powered by Claude · Ollama · FastAPI</p>
+    </div>
+  </div>
+</footer>
+
+<script>
+  // Connector filter
+  function filterConn(cat, el) {
+    document.querySelectorAll('.ctab').forEach(t => t.classList.remove('active'));
+    el.classList.add('active');
+    document.querySelectorAll('.conn-card').forEach(c => {
+      c.style.display = (cat === 'all' || c.dataset.cat === cat) ? '' : 'none';
+    });
+  }
+
+  // Nav scroll effect
+  window.addEventListener('scroll', () => {
+    document.querySelector('nav').style.borderBottomColor =
+      window.scrollY > 20 ? 'rgba(255,255,255,.12)' : 'rgba(255,255,255,.07)';
+  });
+
+  // Smooth scroll
+  document.querySelectorAll('a[href^="#"]').forEach(a => {
+    a.addEventListener('click', e => {
+      e.preventDefault();
+      document.querySelector(a.getAttribute('href'))?.scrollIntoView({ behavior: 'smooth' });
+    });
+  });
+</script>
+</body>
+</html>

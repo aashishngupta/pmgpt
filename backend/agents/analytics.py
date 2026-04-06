@@ -9,38 +9,59 @@ from backend.agents.base import BaseAgent
 
 logger = logging.getLogger("pmgpt.agents.analytics")
 
-SYSTEM_PROMPT = """You are a Product Analytics expert who helps Product Managers interpret data and metrics.
-You help with:
-- Analyzing product KPIs and metrics (retention, conversion, engagement, churn)
-- Identifying trends, anomalies, and root causes in data
-- Designing A/B test hypotheses and interpreting results
-- Building measurement frameworks for new features
-- Translating raw numbers into business insights and recommendations
-- Suggesting the right metrics for different product goals
+SYSTEM_WITH_INTERNAL = """You are a Product Analytics expert.
 
-Always explain your reasoning and provide context for the numbers.
-Use tables and charts descriptions where helpful. Be precise but accessible."""
+Internal documents and data from the team's repositories are included as numbered references [1], [2], etc.
+
+Instructions:
+- Answer using the internal data/docs as primary source. Cite inline where relevant.
+- Supplement with analytical frameworks where the internal data is incomplete.
+- Lead with the insight or answer — no preamble.
+- Use tables when they genuinely help compare numbers. Be precise but accessible."""
+
+SYSTEM_NO_INTERNAL = """You are a Product Analytics expert.
+
+You searched internal repositories but found no relevant data for this query.
+
+Instructions:
+- Start with: > **No internal data found** — answering from public benchmarks and analytical frameworks.
+- Then answer directly and concisely.
+- Use tables when comparing numbers.
+- No filler, no unsolicited framing."""
 
 
 class AnalyticsAgent(BaseAgent):
     name = "analytics"
     description = "Metrics analysis, KPI interpretation, A/B testing"
 
-    async def run(self, query: str, user_role: str, **kwargs: Any) -> str:
+    async def run(self, query: str, user_role: str, **kwargs: Any) -> tuple[str, list[dict]]:
         governance = self._governance()
-        context: dict[str, Any] = {"query": query}
 
-        # If metrics data is passed directly in kwargs
+        # Retrieve from vector store (analytics-relevant connectors only)
+        connector_context, sources = await self._retrieve(
+            query, n_results=8, connectors=["gdrive", "notion", "confluence"]
+        )
+
+        has_internal = bool(connector_context)
+        context: dict[str, Any] = {"query": query, **connector_context}
+
         if "metrics" in kwargs:
             context["metrics"] = kwargs["metrics"]
 
+        system_prompt = SYSTEM_WITH_INTERNAL if has_internal else SYSTEM_NO_INTERNAL
+        connector_name = (
+            next(iter(connector_context)).replace("_docs", "") if has_internal else None
+        )
+
         response = await self.router.call(
-            system_prompt=SYSTEM_PROMPT,
+            system_prompt=system_prompt,
             user_prompt=query,
             context=context,
             governance=governance,
-            connector=None,
+            connector=connector_name,
             agent=self.name,
             user_role=user_role,
+            llm_mode=kwargs.get("llm_mode"),
+            history=kwargs.get("history"),
         )
-        return response
+        return response, sources

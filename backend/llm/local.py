@@ -19,8 +19,21 @@ class LocalLLM:
         self.max_tokens = config.get("max_tokens", 4096)
         self.temperature = config.get("temperature", 0.7)
 
-    async def complete(self, system: str, user: str) -> str:
-        prompt = f"<s>[INST] {system}\n\n{user} [/INST]"
+    async def complete(
+        self,
+        system: str,
+        user: str,
+        history: list[dict] | None = None,
+    ) -> str:
+        # Build Mistral-style multi-turn prompt
+        parts = [f"<s>[INST] {system}\n\n"]
+        for turn in history or []:
+            if turn["role"] == "user":
+                parts.append(f"{turn['content']} [/INST] ")
+            else:
+                parts.append(f"{turn['content']} </s><s>[INST] ")
+        parts.append(f"{user} [/INST]")
+        prompt = "".join(parts)
         payload = {
             "model": self.model,
             "prompt": prompt,

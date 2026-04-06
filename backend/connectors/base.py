@@ -15,7 +15,7 @@ from typing import Any
 
 
 class BaseConnector(ABC):
-    """Abstract base class for all pmgPT data connectors."""
+    """Abstract base class for all pmGPT data connectors."""
 
     # Subclasses must set this to match the key in pmgpt.config.yaml
     name: str = ""

@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 72" width="80" height="72">
+  <defs>
+    <linearGradient id="g-teal" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#14B8A6"/>
+      <stop offset="100%" stop-color="#2DD4BF"/>
+    </linearGradient>
+    <linearGradient id="g-purple" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#8B5CF6"/>
+      <stop offset="100%" stop-color="#A78BFA"/>
+    </linearGradient>
+    <linearGradient id="g-blue" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#9BB2F6"/>
+      <stop offset="100%" stop-color="#5B8EF8"/>
+    </linearGradient>
+    <filter id="sh" x="-10%" y="-10%" width="120%" height="130%">
+      <feDropShadow dx="0" dy="2" stdDeviation="2.5" flood-color="rgba(0,0,0,0.20)"/>
+    </filter>
+  </defs>
+  <!-- Bottom layer — teal -->
+  <rect x="16" y="32" width="64" height="36" rx="9" fill="url(#g-teal)" filter="url(#sh)"/>
+  <!-- Middle layer — purple -->
+  <rect x="8" y="18" width="64" height="36" rx="9" fill="url(#g-purple)" filter="url(#sh)"/>
+  <!-- Top layer — blue -->
+  <rect x="0" y="4" width="64" height="36" rx="9" fill="url(#g-blue)" filter="url(#sh)"/>
+  <!-- White hollow circle, top-left of blue layer -->
+  <circle cx="12" cy="15" r="7" fill="white" opacity="0.95"/>
+</svg>

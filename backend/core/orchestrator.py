@@ -11,9 +11,12 @@ import logging
 import re
 from typing import Any
 
+from typing import TYPE_CHECKING
+
 from backend.agents.analytics import AnalyticsAgent
 from backend.agents.base import BaseAgent
 from backend.agents.docs import DocsAgent
+from backend.agents.general import GeneralAgent
 from backend.agents.ops import OpsAgent
 from backend.agents.review import ReviewAgent
 from backend.agents.sprint import SprintAgent
@@ -23,33 +26,38 @@ from backend.core.classifier import DataClassifier
 from backend.core.governance import AuditLogger
 from backend.llm.router import LLMRouter
 
+if TYPE_CHECKING:
+    from backend.rag.retriever import Retriever
+
 logger = logging.getLogger("pmgpt.orchestrator")
 
 
-# Intent → (agent_name, keywords)
+# Intent → (agent_name, keywords)  — ordered by specificity, most specific first
 INTENT_RULES: list[tuple[str, list[str]]] = [
     ("sprint", [
         "sprint", "spillover", "velocity", "jira", "backlog",
-        "story point", "ticket", "issue", "blocked", "standup",
-        "scrum", "iteration", "burndown",
+        "story point", "ticket", "issue", "blocked", "scrum",
+        "iteration", "burndown", "board", "epic",
     ]),
     ("docs", [
-        "prd", "spec", "requirement", "document", "confluence", "notion",
-        "write a", "draft a", "create a doc", "user story", "acceptance criteria",
+        "prd", "spec", "requirement", "confluence", "notion",
+        "write a", "draft a", "create a doc", "user story",
+        "acceptance criteria", "documentation", "rfc",
     ]),
     ("strategy", [
-        "roadmap", "okr", "vision", "strategy", "prioritiz", "north star",
-        "objective", "key result", "quarterly", "annual plan", "rice", "ice",
-        "now next later", "theme", "bet", "initiative",
+        "roadmap", "okr", "product vision", "product strategy",
+        "north star", "key result", "quarterly plan", "annual plan",
+        "rice framework", "ice framework", "now next later",
+        "strategic bet", "initiative", "positioning", "gtm",
     ]),
     ("analytics", [
         "metric", "kpi", "retention", "conversion", "churn", "dau", "mau",
         "funnel", "a/b test", "experiment", "dashboard", "analytics",
-        "measure", "trend", "growth", "engagement",
+        "measure", "trend", "engagement", "cohort", "activation",
     ]),
     ("ops", [
         "standup", "triage", "release note", "changelog", "update email",
-        "meeting note", "action item", "follow-up", "daily", "weekly",
+        "meeting note", "action item", "follow-up", "daily update", "weekly update",
     ]),
     ("review", [
         "resume", "job description", "interview", "career", "cover letter",
@@ -65,15 +73,18 @@ class Orchestrator:
         registry: ConnectorRegistry,
         classifier: DataClassifier,
         audit: AuditLogger,
+        retriever: "Retriever | None" = None,
     ) -> None:
         shared = (router, registry, classifier, audit)
+        kw = {"retriever": retriever}
         self._agents: dict[str, BaseAgent] = {
-            "sprint": SprintAgent(*shared),
-            "docs": DocsAgent(*shared),
-            "strategy": StrategyAgent(*shared),
-            "analytics": AnalyticsAgent(*shared),
-            "ops": OpsAgent(*shared),
-            "review": ReviewAgent(*shared),
+            "sprint":    SprintAgent(*shared, **kw),
+            "docs":      DocsAgent(*shared, **kw),
+            "strategy":  StrategyAgent(*shared, **kw),
+            "analytics": AnalyticsAgent(*shared, **kw),
+            "ops":       OpsAgent(*shared, **kw),
+            "review":    ReviewAgent(*shared, **kw),
+            "general":   GeneralAgent(*shared, **kw),
         }
 
     def detect_intent(self, query: str) -> str:
@@ -85,7 +96,7 @@ class Orchestrator:
                 scores[agent_name] = hits
 
         if not scores:
-            return "strategy"  # default fallback
+            return "general"  # neutral fallback — no domain keywords matched
 
         return max(scores, key=lambda k: scores[k])
 
@@ -94,6 +105,7 @@ class Orchestrator:
         query: str,
         user_role: str,
         agent_override: str | None = None,
+        history: list[dict] | None = None,
         **kwargs: Any,
     ) -> dict[str, Any]:
         """
@@ -116,10 +128,11 @@ class Orchestrator:
 
         logger.info("Routing query to agent=%s role=%s", intent, user_role)
 
-        response = await agent.run(query, user_role, **kwargs)
+        response, sources = await agent.run(query, user_role, history=history, **kwargs)
 
         return {
             "agent": agent.name,
             "response": response,
             "intent_detected": intent,
+            "sources": sources,
         }

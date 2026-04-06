@@ -26,11 +26,10 @@ class ReviewAgent(BaseAgent):
     name = "review"
     description = "PM career tools, job review, resume and interview prep"
 
-    async def run(self, query: str, user_role: str, **kwargs: Any) -> str:
+    async def run(self, query: str, user_role: str, **kwargs: Any) -> tuple[str, list[dict]]:
         governance = self._governance()
         context: dict[str, Any] = {"query": query}
 
-        # Pass any additional content (resume text, JD, etc.) from kwargs
         for key in ("resume", "job_description", "portfolio"):
             if key in kwargs:
                 context[key] = kwargs[key]
@@ -43,5 +42,7 @@ class ReviewAgent(BaseAgent):
             connector=None,
             agent=self.name,
             user_role=user_role,
+            llm_mode=kwargs.get("llm_mode"),
+            history=kwargs.get("history"),
         )
-        return response
+        return response, []
