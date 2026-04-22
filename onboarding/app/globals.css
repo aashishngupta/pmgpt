@@ -2,50 +2,86 @@
 @tailwind components;
 @tailwind utilities;
 
+/*
+ * pmGPT Design System — CSS Custom Properties
+ * These variables power shadcn/ui components.
+ * For brand colors, edit lib/brand.ts instead.
+ */
+
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 224 71.4% 4.1%;
-    --card: 0 0% 100%;
-    --card-foreground: 224 71.4% 4.1%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 224 71.4% 4.1%;
-    --primary: 262.1 83.3% 57.8%;
-    --primary-foreground: 210 20% 98%;
-    --secondary: 220 14.3% 95.9%;
-    --secondary-foreground: 220.9 39.3% 11%;
-    --muted: 220 14.3% 95.9%;
-    --muted-foreground: 220 8.9% 46.1%;
-    --accent: 220 14.3% 95.9%;
-    --accent-foreground: 220.9 39.3% 11%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 20% 98%;
-    --border: 220 13% 91%;
-    --input: 220 13% 91%;
-    --ring: 262.1 83.3% 57.8%;
-    --radius: 0.75rem;
+    /* Page */
+    --background: 218 20% 97%;      /* brand.canvas #F7F8FA */
+    --foreground: 222 47% 11%;      /* brand.ink    #0F172A */
+
+    /* Surfaces */
+    --card:             0 0% 100%;
+    --card-foreground:  222 47% 11%;
+    --popover:          0 0% 100%;
+    --popover-foreground: 222 47% 11%;
+
+    /* Primary → brand accent blue */
+    --primary:            217 91% 60%;   /* #3B82F6 */
+    --primary-foreground: 0 0% 100%;
+
+    /* Secondary → elevated surface */
+    --secondary:            215 20% 95%;
+    --secondary-foreground: 222 47% 11%;
+
+    /* Muted → subtle backgrounds */
+    --muted:            215 20% 95%;
+    --muted-foreground: 215 16% 47%;    /* brand.ink-3 */
+
+    /* Accent */
+    --accent:            215 20% 95%;
+    --accent-foreground: 222 47% 11%;
+
+    /* Destructive */
+    --destructive:            0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+
+    /* Borders & inputs */
+    --border: 214 32% 88%;    /* brand.line #E2E8F0 */
+    --input:  214 32% 88%;
+    --ring:   217 91% 60%;    /* brand.accent */
+
+    /* Radius — tighter than default for professional feel */
+    --radius: 0.5rem;         /* 8px */
   }
 }
 
 @layer base {
   * { @apply border-border; }
-  body { @apply bg-background text-foreground antialiased; }
+  body {
+    background-color: #F7F8FA;
+    color: #0F172A;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    font-size: 13px;
+    line-height: 1.5;
+  }
 }
 
+/* ── Scrollbar — minimal ────────────────────────────────────────────────────── */
+::-webkit-scrollbar       { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 99px; }
+::-webkit-scrollbar-thumb:hover { background: #94A3B8; }
+
+/* ── Onboarding step cards (keep working) ────────────────────────────────────*/
 .step-card {
-  @apply border-2 rounded-xl p-4 cursor-pointer transition-all duration-150 select-none;
+  @apply border-2 rounded-lg p-4 cursor-pointer transition-all duration-150 select-none;
 }
-.step-card.selected {
-  @apply border-violet-500 bg-violet-50;
-}
-.step-card:not(.selected) {
-  @apply border-slate-200 bg-white hover:border-violet-300 hover:bg-slate-50;
-}
+.step-card.selected        { border-color: #3B82F6; background-color: #EFF6FF; }
+.step-card:not(.selected)  { border-color: #E2E8F0; background-color: #FFFFFF; }
+.step-card:not(.selected):hover { border-color: #3B82F6; background-color: #F1F3F7; }
+
 .shake { animation: shake 0.35s ease; }
 @keyframes shake {
   0%,100% { transform: translateX(0); }
-  20% { transform: translateX(-6px); }
-  40% { transform: translateX(6px); }
-  60% { transform: translateX(-4px); }
-  80% { transform: translateX(4px); }
+  20%     { transform: translateX(-6px); }
+  40%     { transform: translateX(6px); }
+  60%     { transform: translateX(-4px); }
+  80%     { transform: translateX(4px); }
 }

@@ -53,9 +53,10 @@ class GeneralAgent(BaseAgent):
         context: dict[str, Any] = {"query": query, **connector_context}
 
         # Step 3 — pick system prompt based on whether we found internal docs
-        system_prompt = SYSTEM_WITH_INTERNAL if has_internal else SYSTEM_NO_INTERNAL
+        workspace_context = kwargs.get("workspace_context", "")
+        system_prompt_base = SYSTEM_WITH_INTERNAL if has_internal else SYSTEM_NO_INTERNAL
+        system_prompt = self._inject_workspace(system_prompt_base, workspace_context)
 
-        # Determine which connector drove the response (first one with results)
         connector_name: str | None = (
             next(iter(connector_context)).replace("_docs", "") if has_internal else None
         )

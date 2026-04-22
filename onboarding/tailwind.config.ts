@@ -1,14 +1,21 @@
 import type { Config } from "tailwindcss";
+import { brandColors } from "./lib/brand";
 
 const config: Config = {
   content: [
     "./pages/**/*.{js,ts,jsx,tsx,mdx}",
     "./components/**/*.{js,ts,jsx,tsx,mdx}",
     "./app/**/*.{js,ts,jsx,tsx,mdx}",
+    "./lib/**/*.{js,ts,jsx,tsx}",
   ],
   theme: {
     extend: {
+      // ── Brand design system ─────────────────────────────────────────────────
+      // Edit lib/brand.ts to change colors across the entire portal.
       colors: {
+        brand: brandColors,
+
+        // shadcn/ui semantic tokens — mapped to brand
         background: "hsl(var(--background))",
         foreground: "hsl(var(--foreground))",
         border:     "hsl(var(--border))",
@@ -48,8 +55,12 @@ const config: Config = {
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
       },
+      fontFamily: {
+        mono: ['"JetBrains Mono"', '"Fira Code"', 'Menlo', '"Courier New"', 'monospace'],
+      },
     },
   },
   plugins: [],
 };
+
 export default config;

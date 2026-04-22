@@ -293,8 +293,8 @@
     <a href="#security">Security</a>
   </div>
   <div class="nav-right">
-    <a href="/app" class="btn-nav-ghost">Sign in</a>
-    <a href="/app" class="btn-nav-primary">Get Started →</a>
+    <a href="/login" class="btn-nav-ghost">Sign in</a>
+    <a href="#" id="cta-nav" class="btn-nav-primary">Get Started →</a>
   </div>
 </nav>
 
@@ -311,7 +311,7 @@
   <p class="hero-sub">Run your entire product function on AI. From sprint planning to GTM strategy — pmGPT connects your tools, understands your context, and executes like a senior PM.</p>
 
   <div class="hero-ctas">
-    <a href="/app" class="btn-hero-primary">🚀 Start Free</a>
+    <a href="#" id="cta-hero" class="btn-hero-primary">🚀 Start Free</a>
     <a href="#workflows" class="btn-hero-secondary">Explore workflows →</a>
   </div>
 
@@ -595,7 +595,7 @@
 <section class="cta-section">
   <h2>Ready to run your product<br>function on AI?</h2>
   <p>Connect your tools in minutes. Get your first standup, PRD, or competitive analysis instantly — free.</p>
-  <a href="/app" class="btn-cta">🚀 Get Started Free →</a>
+  <a href="#" id="cta-bottom" class="btn-cta">🚀 Get Started Free →</a>
 </section>
 
 <!-- ── FOOTER ─────────────────────────────────────────────────────────────── -->
@@ -626,7 +626,7 @@
         <a href="#connectors">Connectors</a>
         <a href="#how">How it works</a>
         <a href="#security">Security</a>
-        <a href="/app">Launch App</a>
+        <a href="/dashboard">Launch App</a>
       </div>
       <div class="footer-col">
         <h4>Integrations</h4>
@@ -639,12 +639,12 @@
       </div>
       <div class="footer-col">
         <h4>Workflows</h4>
-        <a href="/app">Sprint Planning</a>
-        <a href="/app">PRD Generator</a>
-        <a href="/app">Competitive Analysis</a>
-        <a href="/app">GTM Strategy</a>
-        <a href="/app">Roadmap Builder</a>
-        <a href="/app">Daily Standup</a>
+        <a href="/dashboard/chat?agent=ops&q=Sprint+planning">Sprint Planning</a>
+        <a href="/dashboard/chat?agent=docs&q=Write+a+PRD">PRD Generator</a>
+        <a href="/dashboard/chat?agent=competitive">Competitive Analysis</a>
+        <a href="/dashboard/chat?agent=strategy">GTM Strategy</a>
+        <a href="/dashboard/chat?agent=strategy&q=Build+roadmap">Roadmap Builder</a>
+        <a href="/dashboard/chat?agent=ops&q=Daily+standup">Daily Standup</a>
       </div>
       <div class="footer-col">
         <h4>Company</h4>
@@ -685,6 +685,16 @@
       document.querySelector(a.getAttribute('href'))?.scrollIntoView({ behavior: 'smooth' });
     });
   });
+</script>
+<script>
+  // Auth-aware CTAs: logged in → dashboard, else → signup
+  (function() {
+    var dest = localStorage.getItem('pmgpt_access_token') ? '/dashboard' : '/onboarding/signup';
+    ['cta-nav','cta-hero','cta-bottom'].forEach(function(id) {
+      var el = document.getElementById(id);
+      if (el) el.addEventListener('click', function(e) { e.preventDefault(); location.href = dest; });
+    });
+  })();
 </script>
 </body>
 </html>

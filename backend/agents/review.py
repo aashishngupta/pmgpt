@@ -34,12 +34,14 @@ class ReviewAgent(BaseAgent):
             if key in kwargs:
                 context[key] = kwargs[key]
 
+        workspace_context = kwargs.get("workspace_context", "")
+        system_prompt = self._inject_workspace(SYSTEM_PROMPT, workspace_context)
+
         response = await self.router.call(
-            system_prompt=SYSTEM_PROMPT,
+            system_prompt=system_prompt,
             user_prompt=query,
             context=context,
             governance=governance,
-            connector=None,
             agent=self.name,
             user_role=user_role,
             llm_mode=kwargs.get("llm_mode"),

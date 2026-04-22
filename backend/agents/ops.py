@@ -91,8 +91,11 @@ class OpsAgent(BaseAgent):
         else:
             context["calendar_status"] = "Google Calendar is not configured."
 
+        workspace_context = kwargs.get("workspace_context", "")
+        system_prompt = self._inject_workspace(SYSTEM_PROMPT, workspace_context)
+
         response = await self.router.call(
-            system_prompt=SYSTEM_PROMPT,
+            system_prompt=system_prompt,
             user_prompt=query,
             context=context,
             governance=governance,

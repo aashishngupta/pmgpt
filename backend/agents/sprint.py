@@ -72,8 +72,11 @@ class SprintAgent(BaseAgent):
                 logger.warning("Google Calendar fetch failed in sprint agent: %s", exc)
                 context["calendar_status"] = "Could not connect to Google Calendar."
 
+        workspace_context = kwargs.get("workspace_context", "")
+        system_prompt = self._inject_workspace(SYSTEM_PROMPT, workspace_context)
+
         response = await self.router.call(
-            system_prompt=SYSTEM_PROMPT,
+            system_prompt=system_prompt,
             user_prompt=query,
             context=context,
             governance=governance,

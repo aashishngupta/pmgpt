@@ -2,118 +2,204 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { OnboardingLayout } from '@/components/onboarding/OnboardingLayout';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { saveState, loadState } from '@/lib/onboarding-store';
-import { Globe, Mail, ArrowRight, CalendarDays } from 'lucide-react';
+import Link from 'next/link';
+import { authApi, tokenStore } from '@/lib/auth';
+import { Logo } from '@/components/shared/Logo';
+import { ArrowRight, Loader2, Eye, EyeOff, Building2, User, Mail, Lock } from 'lucide-react';
+
+const ROLES = ['Founder / CEO', 'CPO / CTO', 'Head of Product', 'VP Product', 'Senior PM', 'PM', 'Solo PM'];
 
 export default function SignupPage() {
   const router = useRouter();
-  const [mode, setMode] = useState<'default' | 'email'>('default');
-  const [email, setEmail] = useState('');
+  const [name,     setName]     = useState('');
+  const [email,    setEmail]    = useState('');
+  const [company,  setCompany]  = useState('');
+  const [role,     setRole]     = useState('');
   const [password, setPassword] = useState('');
-  const [name, setName] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [showPw,   setShowPw]   = useState(false);
+  const [loading,  setLoading]  = useState(false);
+  const [error,    setError]    = useState('');
 
-  const handleGoogle = () => {
-    // TODO: implement Google OAuth
-    const state = loadState();
-    saveState({ ...state, step: 2, auth: { ...state.auth, authMethod: 'google', verified: true, name: 'Demo User', email: 'demo@company.com' } });
-    router.push('/onboarding/workspace');
-  };
+  const valid = name.trim() && email.trim() && company.trim() && password.length >= 8;
 
-  const handleEmailSubmit = (e: React.FormEvent) => {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setError('');
-    if (!email || !password || !name) { setError('All fields are required.'); return; }
-    if (!email.includes('@')) { setError('Please enter a valid work email.'); return; }
-    setLoading(true);
-    const state = loadState();
-    saveState({ ...state, step: 1, auth: { ...state.auth, authMethod: 'email', email, name, verified: false } });
-    setTimeout(() => { setLoading(false); router.push('/onboarding/verify'); }, 600);
-  };
+    if (!valid) return;
+    setError(''); setLoading(true);
+    try {
+      const tokens = await authApi.signup({
+        name,
+        email,
+        password,
+        company_name: company,
+        role: role || undefined,
+      });
+      tokenStore.save(tokens);
+      router.push('/onboarding/workspace');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Signup failed');
+    } finally {
+      setLoading(false);
+    }
+  }
 
   return (
-    <OnboardingLayout>
-      <div className="text-center mb-8">
-        <div className="inline-flex items-center gap-1.5 bg-violet-100 text-violet-700 text-xs font-medium px-3 py-1 rounded-full mb-4">
-          🔒 Invite-only early access
+    <div className="min-h-screen bg-[#F7F8FA] flex flex-col">
+
+      {/* Top bar */}
+      <header className="h-14 flex items-center justify-between px-8 bg-white border-b border-slate-200">
+        <Link href="/" className="flex items-center gap-2">
+          <Logo size={22} />
+          <span className="font-bold text-[15px] text-slate-900 tracking-tight">pmGPT</span>
+        </Link>
+        <p className="text-[13px] text-slate-500">
+          Already have an account?{' '}
+          <Link href="/login" className="text-blue-600 font-semibold hover:underline">Sign in</Link>
+        </p>
+      </header>
+
+      {/* Progress */}
+      <div className="bg-white border-b border-slate-100 px-8 py-3">
+        <div className="max-w-lg mx-auto flex items-center gap-3">
+          {['Create account', 'Workspace setup', 'Connect tools'].map((label, i) => (
+            <div key={label} className="flex items-center gap-2 flex-1 min-w-0">
+              <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-bold flex-shrink-0 ${
+                i === 0 ? 'bg-blue-600 text-white' : 'bg-slate-200 text-slate-400'
+              }`}>
+                {i + 1}
+              </div>
+              <span className={`text-[12px] font-medium truncate ${i === 0 ? 'text-slate-800' : 'text-slate-400'}`}>
+                {label}
+              </span>
+              {i < 2 && <div className="h-px flex-1 bg-slate-200 ml-1" />}
+            </div>
+          ))}
         </div>
-        <h1 className="text-3xl font-bold text-slate-900 mb-2">Welcome to pmGPT</h1>
-        <p className="text-slate-500">The AI-native Product OS for modern product teams</p>
       </div>
 
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-8 space-y-4">
-        {mode === 'default' ? (
-          <>
-            <Button
-              className="w-full h-12 text-base font-medium gap-2.5 bg-white hover:bg-slate-50 text-slate-800 border border-slate-200 shadow-sm"
-              variant="outline"
-              onClick={handleGoogle}
+      {/* Form */}
+      <div className="flex-1 flex items-start justify-center px-4 py-12">
+        <div className="w-full max-w-md">
+          <div className="mb-8">
+            <h1 className="text-[26px] font-black text-slate-900 mb-1.5 tracking-tight">Create your account</h1>
+            <p className="text-[14px] text-slate-500">Start building your AI product team in 2 minutes.</p>
+          </div>
+
+          {error && (
+            <div className="mb-5 px-4 py-3 rounded-xl bg-red-50 border border-red-200 text-[13px] text-red-700 font-medium">
+              {error}
+            </div>
+          )}
+
+          <form onSubmit={handleSubmit} className="space-y-4">
+            {/* Row 1: name + company */}
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-[11px] font-bold text-slate-600 uppercase tracking-wide mb-1.5">
+                  Your name
+                </label>
+                <div className="relative">
+                  <User className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
+                  <input
+                    type="text" required autoFocus
+                    placeholder="Aashish Gupta"
+                    value={name} onChange={e => setName(e.target.value)}
+                    className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-slate-200 bg-white text-[13px] text-slate-900 placeholder-slate-400 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 transition-all"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block text-[11px] font-bold text-slate-600 uppercase tracking-wide mb-1.5">
+                  Company
+                </label>
+                <div className="relative">
+                  <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
+                  <input
+                    type="text" required
+                    placeholder="Acme Corp"
+                    value={company} onChange={e => setCompany(e.target.value)}
+                    className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-slate-200 bg-white text-[13px] text-slate-900 placeholder-slate-400 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 transition-all"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Role */}
+            <div>
+              <label className="block text-[11px] font-bold text-slate-600 uppercase tracking-wide mb-1.5">
+                Your role <span className="normal-case text-slate-400 font-normal">(optional)</span>
+              </label>
+              <div className="flex flex-wrap gap-2">
+                {ROLES.map(r => (
+                  <button
+                    type="button" key={r}
+                    onClick={() => setRole(role === r ? '' : r)}
+                    className={`px-3 py-1.5 rounded-lg border text-[12px] font-medium transition-all ${
+                      role === r
+                        ? 'border-blue-500 bg-blue-50 text-blue-700'
+                        : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'
+                    }`}
+                  >
+                    {r}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Email */}
+            <div>
+              <label className="block text-[11px] font-bold text-slate-600 uppercase tracking-wide mb-1.5">
+                Work email
+              </label>
+              <div className="relative">
+                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
+                <input
+                  type="email" required
+                  placeholder="you@company.com"
+                  value={email} onChange={e => setEmail(e.target.value)}
+                  className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-slate-200 bg-white text-[13px] text-slate-900 placeholder-slate-400 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 transition-all"
+                />
+              </div>
+            </div>
+
+            {/* Password */}
+            <div>
+              <label className="block text-[11px] font-bold text-slate-600 uppercase tracking-wide mb-1.5">
+                Password
+              </label>
+              <div className="relative">
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
+                <input
+                  type={showPw ? 'text' : 'password'} required minLength={8}
+                  placeholder="Min 8 characters"
+                  value={password} onChange={e => setPassword(e.target.value)}
+                  className="w-full pl-9 pr-10 py-2.5 rounded-xl border border-slate-200 bg-white text-[13px] text-slate-900 placeholder-slate-400 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 transition-all"
+                />
+                <button type="button" onClick={() => setShowPw(p => !p)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
+                  {showPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+            </div>
+
+            <button
+              type="submit" disabled={loading || !valid}
+              className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-[14px] font-bold transition-all disabled:opacity-40 disabled:cursor-not-allowed mt-2 shadow-lg shadow-blue-600/20"
             >
-              <svg viewBox="0 0 24 24" className="w-5 h-5">
-                <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
-                <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
-                <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
-                <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
-              </svg>
-              Continue with Google
-            </Button>
-
-            <div className="relative">
-              <div className="absolute inset-0 flex items-center"><span className="w-full border-t border-slate-200" /></div>
-              <div className="relative flex justify-center text-xs"><span className="bg-white px-3 text-slate-400">or</span></div>
-            </div>
-
-            <Button variant="outline" className="w-full h-12 text-base font-medium gap-2.5 border-slate-200" onClick={() => setMode('email')}>
-              <Mail className="w-4 h-4" />
-              Sign up with work email
-            </Button>
-
-            <div className="pt-2 text-center">
-              <a
-                href="https://calendly.com"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-violet-600 transition-colors"
-              >
-                <CalendarDays className="w-3.5 h-3.5" />
-                For teams of 5+, talk to sales →
-              </a>
-            </div>
-          </>
-        ) : (
-          <form onSubmit={handleEmailSubmit} className="space-y-4">
-            <div className="space-y-1.5">
-              <Label htmlFor="name">Full name</Label>
-              <Input id="name" placeholder="Aashish Gupta" value={name} onChange={e => setName(e.target.value)} className="h-11" />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="email">Work email</Label>
-              <Input id="email" type="email" placeholder="you@company.com" value={email} onChange={e => setEmail(e.target.value)} className="h-11" />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="password">Password</Label>
-              <Input id="password" type="password" placeholder="Min. 8 characters" value={password} onChange={e => setPassword(e.target.value)} className="h-11" />
-            </div>
-            {error && <p className="text-sm text-red-500">{error}</p>}
-            <Button type="submit" className="w-full h-11 bg-violet-600 hover:bg-violet-700 gap-2" disabled={loading}>
-              {loading ? 'Creating account…' : <><span>Continue</span><ArrowRight className="w-4 h-4" /></>}
-            </Button>
-            <button type="button" onClick={() => setMode('default')} className="w-full text-sm text-slate-400 hover:text-slate-600 transition-colors">
-              ← Back
+              {loading
+                ? <><Loader2 className="w-4 h-4 animate-spin" /> Creating account…</>
+                : <>Create account <ArrowRight className="w-4 h-4" /></>
+              }
             </button>
           </form>
-        )}
-      </div>
 
-      <p className="text-center text-xs text-slate-400 mt-5">
-        Already have an account?{' '}
-        <a href="#" className="text-violet-600 hover:underline">Sign in</a>
-      </p>
-    </OnboardingLayout>
+          <p className="text-center text-[12px] text-slate-400 mt-5">
+            By signing up you agree to our{' '}
+            <span className="text-slate-600 hover:underline cursor-pointer">Terms</span> and{' '}
+            <span className="text-slate-600 hover:underline cursor-pointer">Privacy Policy</span>
+          </p>
+        </div>
+      </div>
+    </div>
   );
 }

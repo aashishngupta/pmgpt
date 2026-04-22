@@ -47,6 +47,18 @@ class BaseAgent(ABC):
         """Create a fresh GovernanceEngine (new session/token map) per request."""
         return GovernanceEngine(self.classifier, self.audit)
 
+    @staticmethod
+    def _inject_workspace(system_prompt: str, workspace_context: str) -> str:
+        """Prepend workspace context block to any system prompt."""
+        if not workspace_context:
+            return system_prompt
+        return (
+            f"[Workspace context — use this to personalise every response]\n"
+            f"{workspace_context}\n"
+            f"---\n\n"
+            f"{system_prompt}"
+        )
+
     async def _retrieve(
         self,
         query: str,

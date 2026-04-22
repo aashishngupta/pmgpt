@@ -36,8 +36,8 @@ class AnalyticsAgent(BaseAgent):
 
     async def run(self, query: str, user_role: str, **kwargs: Any) -> tuple[str, list[dict]]:
         governance = self._governance()
+        workspace_context = kwargs.get("workspace_context", "")
 
-        # Retrieve from vector store (analytics-relevant connectors only)
         connector_context, sources = await self._retrieve(
             query, n_results=8, connectors=["gdrive", "notion", "confluence"]
         )
@@ -48,17 +48,14 @@ class AnalyticsAgent(BaseAgent):
         if "metrics" in kwargs:
             context["metrics"] = kwargs["metrics"]
 
-        system_prompt = SYSTEM_WITH_INTERNAL if has_internal else SYSTEM_NO_INTERNAL
-        connector_name = (
-            next(iter(connector_context)).replace("_docs", "") if has_internal else None
-        )
+        system_prompt_base = SYSTEM_WITH_INTERNAL if has_internal else SYSTEM_NO_INTERNAL
+        system_prompt = self._inject_workspace(system_prompt_base, workspace_context)
 
         response = await self.router.call(
             system_prompt=system_prompt,
             user_prompt=query,
             context=context,
             governance=governance,
-            connector=connector_name,
             agent=self.name,
             user_role=user_role,
             llm_mode=kwargs.get("llm_mode"),

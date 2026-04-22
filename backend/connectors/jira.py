@@ -117,6 +117,55 @@ class JiraConnector(BaseConnector):
                                 "listItem", "blockquote", "codeBlock", "rule") else " "
         return sep.join(parts)
 
+    async def create_issue(
+        self,
+        project_key: str,
+        summary: str,
+        description: str,
+        issue_type: str = "Epic",
+        priority: str = "Medium",
+        labels: list[str] | None = None,
+    ) -> dict[str, Any]:
+        """Create a Jira issue and return its key and URL."""
+        url = f"{self._base}/rest/api/3/issue"
+        body: dict[str, Any] = {
+            "fields": {
+                "project": {"key": project_key},
+                "summary": summary,
+                "issuetype": {"name": issue_type},
+                "priority": {"name": priority},
+                "description": {
+                    "type": "doc",
+                    "version": 1,
+                    "content": [
+                        {
+                            "type": "paragraph",
+                            "content": [{"type": "text", "text": description}],
+                        }
+                    ],
+                },
+            }
+        }
+        if labels:
+            body["fields"]["labels"] = labels
+
+        async with httpx.AsyncClient(auth=self._auth, timeout=15.0) as client:
+            resp = await client.post(url, json=body)
+            resp.raise_for_status()
+            data = resp.json()
+
+        key = data.get("key", "")
+        return {"key": key, "url": f"{self._base}/browse/{key}", "id": data.get("id", "")}
+
+    async def get_projects(self) -> list[dict[str, Any]]:
+        """Return list of accessible Jira projects."""
+        url = f"{self._base}/rest/api/3/project/search"
+        async with httpx.AsyncClient(auth=self._auth, timeout=10.0) as client:
+            resp = await client.get(url)
+            resp.raise_for_status()
+            data = resp.json()
+        return [{"key": p["key"], "name": p["name"]} for p in data.get("values", [])]
+
     async def health_check(self) -> bool:
         url = f"{self._base}/rest/api/3/myself"
         try:
