@@ -35,10 +35,10 @@ export const palette = {
   inkInv2: '#7D8DA8',   // muted on dark bg
 
   // Brand accent — the only color with personality
-  accent:     '#3B82F6',
-  accentDim:  '#2563EB',   // hover / pressed
-  accentBg:   '#EFF6FF',   // tinted highlight bg
-  accentText: '#1D4ED8',   // accent text on white bg
+  accent:     '#6366F1',
+  accentDim:  '#4F46E5',   // hover / pressed
+  accentBg:   '#EEF2FF',   // tinted highlight bg
+  accentText: '#4338CA',   // accent text on white bg
 
   // Borders
   line:  '#E2E8F0',   // standard borders

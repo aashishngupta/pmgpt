@@ -85,3 +85,8 @@
   60%     { transform: translateX(-4px); }
   80%     { transform: translateX(4px); }
 }
+
+@keyframes bounce {
+  0%, 60%, 100% { transform: translateY(0); }
+  30%           { transform: translateY(-5px); }
+}

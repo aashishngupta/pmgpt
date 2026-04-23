@@ -7,52 +7,32 @@ import { Logo } from '@/components/shared/Logo';
 import { cn } from '@/lib/utils';
 import { tokenStore, authApi } from '@/lib/auth';
 import {
-  LayoutDashboard, MessageSquare, Bot, GitBranch, Zap,
-  Plug, Activity, FileText, Settings, Building2, Users,
-  Shield, BookOpen, Search, Library, ChevronDown, ClipboardList, LogOut, BarChart2,
+  LayoutDashboard, MessageSquare, Bot, GitBranch,
+  Plug, FileText, Settings, Building2, Users,
+  Shield, Search, ChevronDown, LogOut, BarChart2,
+  FolderOpen, Activity, Lock,
 } from 'lucide-react';
 
-const NAV_SECTIONS = [
-  {
-    items: [
-      { href: '/dashboard',      icon: LayoutDashboard, label: 'Home'   },
-      { href: '/dashboard/chat', icon: MessageSquare,   label: 'Inbox', badge: '3' },
-    ],
-  },
-  {
-    label: 'Intelligence',
-    items: [
-      { href: '/dashboard/agents',       icon: Bot,           label: 'Agents'      },
-      { href: '/dashboard/workflows',    icon: GitBranch,     label: 'Workflows'   },
-      { href: '/dashboard/prd',          icon: ClipboardList, label: 'PRD Copilot' },
-      { href: '/dashboard/knowledge',    icon: BookOpen,      label: 'Knowledge'   },
-      { href: '/dashboard/skills',       icon: Zap,           label: 'Skills'      },
-    ],
-  },
-  {
-    label: 'Connectors',
-    items: [
-      { href: '/dashboard/connectors', icon: Plug,    label: 'Integrations' },
-      { href: '/dashboard/mcp',        icon: Library, label: 'MCP Library'  },
-    ],
-  },
-  {
-    label: 'Observability',
-    items: [
-      { href: '/dashboard/analytics',     icon: BarChart2, label: 'Analytics'  },
-      { href: '/dashboard/observability', icon: Activity,  label: 'Monitoring' },
-      { href: '/dashboard/audit',         icon: FileText,  label: 'Audit Log'  },
-    ],
-  },
-  {
-    label: 'Settings',
-    items: [
-      { href: '/settings',           icon: Settings,  label: 'General'   },
-      { href: '/settings/team',      icon: Users,     label: 'Team'      },
-      { href: '/settings/workspace', icon: Building2, label: 'Workspace' },
-      { href: '/settings/security',  icon: Shield,    label: 'Security'  },
-    ],
-  },
+const NAV_PRIMARY = [
+  { href: '/dashboard',           icon: LayoutDashboard, label: 'Home'       },
+  { href: '/dashboard/chat',      icon: MessageSquare,   label: 'Chat'       },
+  { href: '/dashboard/agents',    icon: Bot,             label: 'Agents'     },
+  { href: '/dashboard/workflows', icon: GitBranch,       label: 'Workflows'  },
+  { href: '/dashboard/artifacts', icon: FolderOpen,      label: 'Artifacts'  },
+  { href: '/dashboard/connectors',icon: Plug,            label: 'Connectors' },
+];
+
+const NAV_SECONDARY = [
+  { href: '/dashboard/analytics',     icon: BarChart2,  label: 'Analytics'     },
+  { href: '/dashboard/observability', icon: Activity,   label: 'Observability' },
+  { href: '/dashboard/audit',         icon: Lock,       label: 'Governance'    },
+];
+
+const NAV_SETTINGS = [
+  { href: '/settings',           icon: Settings,  label: 'General'   },
+  { href: '/settings/team',      icon: Users,     label: 'Team'      },
+  { href: '/settings/workspace', icon: Building2, label: 'Workspace' },
+  { href: '/settings/security',  icon: Shield,    label: 'Security'  },
 ];
 
 function NavItem({
@@ -168,24 +148,43 @@ export function SettingsSidebar() {
       </div>
 
       {/* Nav */}
-      <nav className={cn('flex-1 py-1 overflow-y-auto space-y-4', expanded ? 'px-2' : 'px-1.5')}>
-        {NAV_SECTIONS.map((section, si) => (
-          <div key={si}>
-            {section.label && expanded && (
-              <div className="px-2.5 mb-1 text-[10px] font-semibold text-brand-ink-inv-2 uppercase tracking-[0.08em] opacity-60 whitespace-nowrap">
-                {section.label}
-              </div>
-            )}
-            {section.label && !expanded && (
-              <div className="mb-1 h-px bg-brand-sidebar-border opacity-40" />
-            )}
-            <div className="space-y-[1px]">
-              {section.items.map(item => (
-                <NavItem key={item.href} {...item} isActive={isActive(item.href)} expanded={expanded} />
-              ))}
+      <nav className={cn('flex-1 py-1 overflow-y-auto flex flex-col gap-4', expanded ? 'px-2' : 'px-1.5')}>
+        {/* Primary */}
+        <div className="space-y-[1px]">
+          {NAV_PRIMARY.map(item => (
+            <NavItem key={item.href} {...item} isActive={isActive(item.href)} expanded={expanded} />
+          ))}
+        </div>
+
+        {/* Divider */}
+        <div className={cn('h-px bg-brand-sidebar-border opacity-40', expanded ? 'mx-2' : 'mx-1')} />
+
+        {/* Secondary */}
+        <div className="space-y-[1px]">
+          {expanded && (
+            <div className="px-2.5 mb-1 text-[10px] font-semibold text-brand-ink-inv-2 uppercase tracking-[0.08em] opacity-50 whitespace-nowrap">
+              Reporting
             </div>
-          </div>
-        ))}
+          )}
+          {NAV_SECONDARY.map(item => (
+            <NavItem key={item.href} {...item} isActive={isActive(item.href)} expanded={expanded} />
+          ))}
+        </div>
+
+        {/* Divider */}
+        <div className={cn('h-px bg-brand-sidebar-border opacity-40', expanded ? 'mx-2' : 'mx-1')} />
+
+        {/* Settings */}
+        <div className="space-y-[1px]">
+          {expanded && (
+            <div className="px-2.5 mb-1 text-[10px] font-semibold text-brand-ink-inv-2 uppercase tracking-[0.08em] opacity-50 whitespace-nowrap">
+              Settings
+            </div>
+          )}
+          {NAV_SETTINGS.map(item => (
+            <NavItem key={item.href} {...item} isActive={isActive(item.href)} expanded={expanded} />
+          ))}
+        </div>
       </nav>
 
       {/* User */}
