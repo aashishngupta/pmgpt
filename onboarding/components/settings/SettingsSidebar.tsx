@@ -9,7 +9,7 @@ import { tokenStore, authApi } from '@/lib/auth';
 import {
   LayoutDashboard, MessageSquare, Bot, GitBranch, Zap,
   Plug, Activity, FileText, Settings, Building2, Users,
-  Shield, BookOpen, Search, Library, ChevronDown, ClipboardList, LogOut,
+  Shield, BookOpen, Search, Library, ChevronDown, ClipboardList, LogOut, BarChart2,
 } from 'lucide-react';
 
 const NAV_SECTIONS = [
@@ -39,8 +39,9 @@ const NAV_SECTIONS = [
   {
     label: 'Observability',
     items: [
-      { href: '/dashboard/observability', icon: Activity, label: 'Monitoring' },
-      { href: '/dashboard/audit',         icon: FileText, label: 'Audit Log'  },
+      { href: '/dashboard/analytics',     icon: BarChart2, label: 'Analytics'  },
+      { href: '/dashboard/observability', icon: Activity,  label: 'Monitoring' },
+      { href: '/dashboard/audit',         icon: FileText,  label: 'Audit Log'  },
     ],
   },
   {

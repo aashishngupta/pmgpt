@@ -1,0 +1,196 @@
+# pmGPT — Cursor Project Rules
+
+## CRITICAL: Read these files before writing any code
+- `MASTER_PLAN.md` — 259-task build plan. Always check task status (✅/🔧/❌) before building anything
+- `CLAUDE.md` — Full codebase context, design system, API map, dos/don'ts
+- `HANDOFF.md` — What was last worked on and what's next
+
+---
+
+## What This Product Is
+
+pmGPT is a **Product Management OS** — AI-native workspace for PMs, PM Leads, and founders at B2B SaaS companies.
+
+**North star:** One person + pmGPT = a full product team.
+
+**ICP:** Founders acting as de facto PM (pre-Series B), Head of Product at lean companies, solo PMs doing the work of 3-person teams.
+
+**Core interaction model:** Alert → Investigate → Preview → Approve → Execute.
+Agents NEVER act unilaterally. Every write action (Jira, Notion, Slack) requires human preview + approval first.
+
+---
+
+## Monorepo Structure
+
+```
+pmgpt/
+├── onboarding/        # Next.js 14 frontend (App Router, TypeScript)
+├── backend/           # FastAPI Python backend
+├── MASTER_PLAN.md     # 259-task roadmap — source of truth for what to build
+├── CLAUDE.md          # Full codebase context
+├── HANDOFF.md         # Session handoff state
+└── docs/
+    ├── DESIGN_SYSTEM.md
+    └── ARCHITECTURE.md
+```
+
+---
+
+## Tech Stack
+
+**Frontend** (`onboarding/`)
+- Next.js 14 App Router, TypeScript strict
+- Tailwind CSS with custom brand tokens (see brand system below — NEVER use raw colors)
+- No shadcn/ui except Button primitive
+- State: React useState/useEffect only (no Redux, no Zustand)
+- Auth: localStorage JWT (temporary — real auth is Section 1 of MASTER_PLAN)
+- API: `onboarding/lib/api.ts` — all calls go through `req()` wrapper
+
+**Backend** (`backend/`)
+- FastAPI + Uvicorn, async
+- DB: SQLite + SQLAlchemy 2.0 (PostgreSQL + Alembic planned — see Section 1.2 of MASTER_PLAN)
+- LLM routing: Claude (Opus/Sonnet/Haiku), GPT-4o, Gemini, Mistral local
+- RAG: vector store per connector, retrieval before every agent call
+- Auth: JWT middleware, RBAC: viewer / pm / pm_lead / admin
+
+---
+
+## Brand Token System (ALWAYS use these — never raw Tailwind colors)
+
+```
+bg-brand-bg / bg-brand-bg-2         # page background / elevated background
+bg-brand-surface                     # card/panel surface
+bg-brand-elevated                    # hover states
+bg-brand-canvas                      # input backgrounds
+bg-brand-sidebar                     # left nav
+bg-brand-accent                      # primary action (purple-ish) — use sparingly
+bg-brand-accent-bg / bg-brand-accent-dim
+
+text-brand-ink                       # primary text
+text-brand-ink-2 / -3 / -4           # secondary / tertiary / disabled
+text-brand-ink-inv / -inv-2          # text on dark backgrounds
+text-brand-accent-text
+
+border-brand-line / border-brand-line-2
+
+bg-brand-green / -amber / -red       # success / warning / error
+text-brand-green / -amber / -red
+bg-brand-green-bg / -amber-bg / -red-bg
+```
+
+---
+
+## Agents (14 total, defined in `onboarding/lib/platform-data.ts`)
+
+| ID | Name | Backend status |
+|---|---|---|
+| strategy | Strategy Advisor | ✅ exists, needs prompt upgrade |
+| docs | Docs Writer | ✅ exists, needs prompt upgrade |
+| analytics | Analytics Agent | ✅ exists, needs prompt upgrade |
+| research | Research Agent | ✅ exists, needs prompt upgrade |
+| ops | Sprint Planner | ✅ exists, needs prompt upgrade |
+| review | Review Agent | ✅ exists, needs prompt upgrade |
+| sprint | Sprint Agent | ✅ exists (may merge with ops) |
+| engineering | Engineering Agent | ❌ no backend Python file yet |
+| competitive | Competitive Intel | ❌ no backend Python file yet |
+| sales | Sales Intel | ❌ no backend Python file yet |
+| coach | PM Coach | ❌ no backend Python file yet |
+| prioritization | Prioritization | ❌ no backend Python file yet |
+| release | Release Manager | ❌ no backend Python file yet |
+| market | Market Intelligence | ❌ no backend Python file yet |
+
+---
+
+## Build Priority (from MASTER_PLAN.md)
+
+### Phase 1 — Make it real (current focus)
+1. Real auth (Section 1.1) — PostgreSQL + JWT + Google OAuth
+2. Database (Section 1.2) — Alembic migrations, all tables
+3. API wiring (Section 1.3) — /auth/*, /workspace/*, /threads/*, /artifacts/*
+4. Multi-thread chat persistence (Section 8)
+5. Onboarding v2 (Section 9)
+
+### Phase 2 — Make agents complete
+- 7 missing backend agent files (A8–A14)
+- Workspace memory injection into every agent call
+- Guardrail enforcement (validate thesis, ask before concluding)
+
+### Phase 3 — Home screen live
+- Widget system with live connector data
+- Alert system fully wired
+
+### Phase 4 — Artifact system
+- Multi-session PRDs, artifact memory, publish flow
+
+### Phase 5 — Workflow execution
+- Workflow runner, trigger system, scheduler
+
+---
+
+## What's Working Right Now
+
+- FastAPI backend running with 7 agents + LLM routing
+- RAG pipeline (ingest, vector store, retriever)
+- Jira connector: read ✅, create_issue ✅, comment ❌, update ❌
+- /chat endpoint with intent detection + agent routing
+- RBAC middleware + audit logging
+- All frontend pages visually built
+- Agent detail (6-tab config), Analytics page (6 tabs), Chat page
+
+## Critical Gaps (Nothing else works properly without these)
+
+- ❌ NO real auth — localStorage only
+- ❌ NO database — no persistence for anything
+- ❌ NO workspace memory injection — agents don't know company/product context
+- ❌ NO artifact memory
+- ❌ 7 agent backend files missing (A8–A14)
+- ❌ Workflow is visual only — no execution engine
+
+---
+
+## Key Files
+
+```
+onboarding/app/dashboard/
+├── page.tsx                    # Home screen
+├── agents/
+│   ├── page.tsx                # Agent grid
+│   └── [id]/page.tsx           # Agent detail (6 tabs)
+├── chat/page.tsx               # Chat with thread sidebar + memory panel
+├── analytics/page.tsx          # Analytics (6 tabs)
+├── workflows/page.tsx          # Workflow builder (React Flow)
+└── connectors/page.tsx
+
+onboarding/lib/
+├── platform-data.ts            # All agent defs, types, mock data
+├── api.ts                      # All API calls — req() wrapper
+└── auth.ts                     # JWT token store
+
+backend/
+├── main.py                     # FastAPI app + all routes
+├── agents/base.py              # BaseAgent: RAG, context, governance
+├── agents/strategy.py          # (and docs, analytics, ops, review, sprint, research)
+├── connectors/jira.py          # Jira read + create_issue
+└── rag/                        # Vector store, ingest, retriever
+```
+
+---
+
+## DO NOT
+
+- Do NOT use raw Tailwind colors (blue-500, etc.) — always use brand tokens
+- Do NOT build PRD Copilot as a separate page — it's a mode within Docs Writer agent
+- Do NOT add standalone "tool" pages — only agents, workflows, connectors, home screen
+- Do NOT copy Clay/Perplexity/Dust UI literally — pmGPT has its own design language
+- Do NOT add code editor, image gen, or non-PM features
+- Do NOT make agents act without human approval on write actions (show preview first)
+- Do NOT use emojis in the UI
+
+---
+
+## Jira Integration
+
+- Instance: https://pmgpt.atlassian.net
+- Credentials: `/Users/aashish/pmgpt/.env` (JIRA_BASE_URL, JIRA_USERNAME, JIRA_API_TOKEN)
+- Project key: SCRUM
+- Key tickets: SCRUM-107 (spec epic), SCRUM-108 (auth), SCRUM-109 (onboarding), SCRUM-110 (remove PRD page), SCRUM-111 (home widgets), SCRUM-112 (Jira write), SCRUM-113 (artifact memory)

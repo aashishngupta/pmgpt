@@ -6,8 +6,16 @@ import {
   Send, Bot, User, Loader2, X, ChevronRight,
   Brain, FileText, Lightbulb, Tag, Link2, Clock, Pin,
   BookOpen, Zap, Play, MessageSquare, Plus,
-  ExternalLink, Copy, Check, Pencil, Trash2,
+  ExternalLink, Copy, Check, Pencil, Trash2, CheckCircle2,
+  Target, BarChart2, Search, Layers, GitPullRequest,
+  Terminal, Trophy, TrendingUp, GraduationCap, Scale, Rocket, Globe,
 } from 'lucide-react';
+
+const AGENT_ICONS_CHAT: Record<string, React.ElementType> = {
+  strategy: Target, docs: FileText, analytics: BarChart2, research: Search,
+  ops: Layers, review: GitPullRequest, engineering: Terminal, competitive: Trophy,
+  sales: TrendingUp, coach: GraduationCap, prioritization: Scale, release: Rocket, market: Globe,
+};
 import { cn } from '@/lib/utils';
 import { AGENTS, Agent, AgentTemplate } from '@/lib/platform-data';
 import { api, Thread } from '@/lib/api';
@@ -288,106 +296,50 @@ function Bubble({ msg, onExtract }: { msg: Message; onExtract: (content: string,
 // ── Right drawer ──────────────────────────────────────────────────────────────
 
 function RightDrawer({
-  memory, onPin, onDelete, agent, onTemplateSelect,
+  memory, onPin, onDelete,
 }: {
   memory: MemoryItem[];
   onPin: (id: string) => void;
   onDelete: (id: string) => void;
-  agent: Agent;
-  onTemplateSelect: (t: AgentTemplate) => void;
 }) {
-  const [tab, setTab] = useState<'memory' | 'templates'>('templates');
-
   return (
-    <div className="w-64 flex-shrink-0 border-l border-brand-line bg-brand-surface flex flex-col overflow-hidden">
-      <div className="flex border-b border-brand-line">
-        {([
-          { id: 'templates', label: 'Templates', icon: FileText },
-          { id: 'memory',    label: 'Memory',    icon: Brain    },
-        ] as const).map(t => (
-          <button
-            key={t.id}
-            onClick={() => setTab(t.id)}
-            className={cn('flex-1 flex items-center justify-center gap-1.5 py-2.5 text-[11px] font-semibold transition-all border-b-2',
-              tab === t.id ? 'border-brand-accent text-brand-ink' : 'border-transparent text-brand-ink-3 hover:text-brand-ink'
-            )}
-          >
-            <t.icon className="w-3.5 h-3.5" /> {t.label}
-          </button>
-        ))}
+    <div className="w-60 flex-shrink-0 border-l border-brand-line bg-brand-surface flex flex-col overflow-hidden">
+      <div className="flex items-center gap-2 px-4 py-3 border-b border-brand-line flex-shrink-0">
+        <Brain className="w-3.5 h-3.5 text-brand-ink-3" />
+        <span className="text-[11px] font-semibold text-brand-ink-3 uppercase tracking-widest">Memory</span>
       </div>
-
-      <div className="flex-1 overflow-y-auto">
-        {tab === 'templates' && (
-          <div className="p-3 space-y-2">
-            {agent.templates.length === 0 ? (
-              <div className="text-center py-8 text-brand-ink-3">
-                <FileText className="w-7 h-7 mx-auto mb-2 opacity-30" />
-                <p className="text-[11px]">No templates for {agent.name}.</p>
-              </div>
-            ) : (
-              agent.templates.map(t => (
-                <div key={t.id} className="bg-brand-canvas border border-brand-line rounded-lg p-3 hover:border-brand-accent transition-all">
-                  <div className="text-[12px] font-semibold text-brand-ink mb-0.5">{t.name}</div>
-                  <p className="text-[11px] text-brand-ink-3 mb-2 leading-snug">{t.description}</p>
-                  <Button size="sm" className="w-full h-7 text-[11px] bg-brand-accent hover:bg-brand-accent-dim gap-1.5" onClick={() => onTemplateSelect(t)}>
-                    <Play className="w-3 h-3" /> Use
-                  </Button>
-                </div>
-              ))
-            )}
-            <div className="pt-2 border-t border-brand-line-2">
-              <p className="text-[10px] font-semibold text-brand-ink-4 uppercase tracking-widest mb-2">All agents</p>
-              {AGENTS.filter(a => a.id !== agent.id && a.templates.length > 0).map(a => (
-                <div key={a.id} className="mb-2">
-                  <div className="text-[10px] font-bold text-brand-ink-3 mb-1">{a.name.replace(' Copilot','')}</div>
-                  {a.templates.map(t => (
-                    <button key={t.id} onClick={() => onTemplateSelect(t)}
-                      className="w-full text-left px-2 py-1.5 rounded-md text-[11px] text-brand-ink-2 hover:bg-brand-elevated hover:text-brand-accent flex items-center gap-1.5 mb-0.5 transition-colors">
-                      <ChevronRight className="w-3 h-3 flex-shrink-0" /> {t.name}
+      <div className="flex-1 overflow-y-auto p-3 space-y-2">
+        <p className="text-[11px] text-brand-ink-3 leading-relaxed">
+          Key context saved from conversations. Auto-injected into future queries.
+        </p>
+        {memory.length === 0 ? (
+          <div className="text-center py-8 text-brand-ink-3">
+            <Brain className="w-7 h-7 mx-auto mb-2 opacity-30" />
+            <p className="text-[11px]">Hover a message and click "Save to memory".</p>
+          </div>
+        ) : (
+          memory.sort((a, b) => Number(b.pinned) - Number(a.pinned)).map(item => {
+            const { label, color } = TYPE_CONFIG[item.type];
+            return (
+              <div key={item.id} className={cn('rounded-lg p-3 border', item.pinned ? 'border-brand-accent/30 bg-brand-accent-bg' : 'border-brand-line bg-brand-canvas')}>
+                <div className="flex items-center justify-between mb-1.5">
+                  <span className={cn('text-[10px] font-bold px-2 py-0.5 rounded-full', color)}>{label}</span>
+                  <div className="flex items-center gap-1">
+                    <button onClick={() => onPin(item.id)} className={cn('p-0.5 rounded', item.pinned ? 'text-brand-accent' : 'text-brand-ink-4 hover:text-brand-ink-2')}>
+                      <Pin className="w-3 h-3" />
                     </button>
-                  ))}
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {tab === 'memory' && (
-          <div className="p-3 space-y-2">
-            <p className="text-[11px] text-brand-ink-3 leading-relaxed">
-              Key information saved from conversations. Injected into future queries automatically.
-            </p>
-            {memory.length === 0 ? (
-              <div className="text-center py-8 text-brand-ink-3">
-                <Brain className="w-7 h-7 mx-auto mb-2 opacity-30" />
-                <p className="text-[11px]">Hover a message and click "Save to memory".</p>
-              </div>
-            ) : (
-              memory.sort((a,b) => Number(b.pinned) - Number(a.pinned)).map(item => {
-                const { label, color, icon: Icon } = TYPE_CONFIG[item.type];
-                return (
-                  <div key={item.id} className={cn('rounded-lg p-3 border', item.pinned ? 'border-brand-accent/30 bg-brand-accent-bg' : 'border-brand-line bg-brand-canvas')}>
-                    <div className="flex items-center justify-between mb-1.5">
-                      <span className={cn('text-[10px] font-bold px-2 py-0.5 rounded-full', color)}>{label}</span>
-                      <div className="flex items-center gap-1">
-                        <button onClick={() => onPin(item.id)} className={cn('p-0.5 rounded', item.pinned ? 'text-brand-accent' : 'text-brand-ink-4 hover:text-brand-ink-2')}>
-                          <Pin className="w-3 h-3" />
-                        </button>
-                        <button onClick={() => onDelete(item.id)} className="p-0.5 rounded text-brand-ink-4 hover:text-brand-red">
-                          <X className="w-3 h-3" />
-                        </button>
-                      </div>
-                    </div>
-                    <p className="text-[11px] text-brand-ink-2 leading-relaxed">{item.content}</p>
-                    <p className="text-[10px] text-brand-ink-4 mt-1.5 flex items-center gap-1">
-                      <Clock className="w-2.5 h-2.5" /> {item.ts.toLocaleDateString()}
-                    </p>
+                    <button onClick={() => onDelete(item.id)} className="p-0.5 rounded text-brand-ink-4 hover:text-brand-red">
+                      <X className="w-3 h-3" />
+                    </button>
                   </div>
-                );
-              })
-            )}
-          </div>
+                </div>
+                <p className="text-[11px] text-brand-ink-2 leading-relaxed">{item.content}</p>
+                <p className="text-[10px] text-brand-ink-4 mt-1.5 flex items-center gap-1">
+                  <Clock className="w-2.5 h-2.5" /> {item.ts.toLocaleDateString()}
+                </p>
+              </div>
+            );
+          })
         )}
       </div>
     </div>
@@ -422,12 +374,23 @@ export default function ChatPage() {
   const [agentId, setAgentId]       = useState(params.get('agent') || 'general');
 
   // UI state
-  const [drawerOpen, setDrawerOpen] = useState(true);
-  const [memory, setMemory]         = useState<MemoryItem[]>([]);
+  const [sidebarOpen, setSidebarOpen]       = useState(false);
+  const [drawerOpen, setDrawerOpen]         = useState(false);
+  const [memory, setMemory]                 = useState<MemoryItem[]>([]);
   const [activeTemplate, setActiveTemplate] = useState<AgentTemplate | null>(null);
+  const [agentDropOpen, setAgentDropOpen]   = useState(false);
+  const agentDropRef = useRef<HTMLDivElement>(null);
 
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef  = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    function outside(e: MouseEvent) {
+      if (agentDropRef.current && !agentDropRef.current.contains(e.target as Node)) setAgentDropOpen(false);
+    }
+    document.addEventListener('mousedown', outside);
+    return () => document.removeEventListener('mousedown', outside);
+  }, []);
 
   const agent = AGENTS.find(a => a.id === agentId) ?? AGENTS[0];
 
@@ -541,41 +504,96 @@ export default function ChatPage() {
   return (
     <div className="flex h-full overflow-hidden">
 
-      {/* Thread sidebar */}
-      <ThreadSidebar
-        threads={threads}
-        activeId={activeThread?.id ?? null}
-        agentId={agentId}
-        onSelect={selectThread}
-        onCreate={newConversation}
-        onDelete={deleteThread}
-      />
+      {/* Thread sidebar — collapsed by default */}
+      {sidebarOpen && (
+        <ThreadSidebar
+          threads={threads}
+          activeId={activeThread?.id ?? null}
+          agentId={agentId}
+          onSelect={selectThread}
+          onCreate={newConversation}
+          onDelete={deleteThread}
+        />
+      )}
 
       {/* Main chat */}
       <div className="flex-1 flex flex-col overflow-hidden">
 
-        {/* Top bar — agent selector */}
+        {/* Top bar — agent dropdown */}
         <div className="flex items-center gap-2 px-4 py-2.5 bg-brand-surface border-b border-brand-line flex-shrink-0">
-          <div className="flex items-center gap-1 overflow-x-auto flex-1">
-            {AGENTS.map(a => (
-              <button
-                key={a.id}
-                onClick={() => { setAgentId(a.id); if (activeThread && activeThread.agent_id !== a.id) newConversation(); }}
-                className={cn(
-                  'flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-medium transition-all flex-shrink-0',
-                  agentId === a.id
-                    ? 'bg-brand-accent-bg text-brand-accent-text border border-brand-accent/20'
-                    : 'text-brand-ink-3 hover:bg-brand-elevated hover:text-brand-ink',
-                )}
-              >
-                {a.name.replace(' Copilot','').replace(' Intel','').replace(' Enablement','').replace(' Manager','')}
-                {a.status === 'beta' && <span className="text-[8px] font-bold text-brand-amber bg-brand-amber-bg px-1 py-0.5 rounded">β</span>}
-              </button>
-            ))}
+          <button
+            onClick={() => setSidebarOpen(v => !v)}
+            title="Toggle conversation history"
+            className={cn('p-1.5 rounded-md transition-all flex-shrink-0', sidebarOpen ? 'bg-brand-accent-bg text-brand-accent' : 'text-brand-ink-3 hover:bg-brand-elevated')}
+          >
+            <MessageSquare className="w-4 h-4" />
+          </button>
+          <div className="relative flex-1" ref={agentDropRef}>
+            <button
+              onClick={() => setAgentDropOpen(v => !v)}
+              className="flex items-center gap-2.5 px-3 py-2 rounded-xl border border-brand-line hover:border-brand-accent bg-brand-canvas transition-all group w-full max-w-xs"
+            >
+              <div className={cn('w-6 h-6 rounded-md flex items-center justify-center flex-shrink-0 text-[11px] font-bold', AGENT_COLOR[agentId] ?? 'bg-slate-100 text-slate-600')}>
+                {(() => { const I = AGENT_ICONS_CHAT[agentId]; return I ? <I className="w-3.5 h-3.5" /> : agent.name[0]; })()}
+              </div>
+              <div className="flex-1 min-w-0 text-left">
+                <div className="text-[13px] font-semibold text-brand-ink truncate">{agent.name}</div>
+                <div className="text-[10px] text-brand-ink-3 truncate">{agent.description.slice(0, 48)}…</div>
+              </div>
+              <ChevronRight className={cn('w-3.5 h-3.5 text-brand-ink-3 transition-transform flex-shrink-0', agentDropOpen ? 'rotate-90' : '')} />
+            </button>
+
+            {agentDropOpen && (
+              <div className="absolute top-full left-0 mt-1.5 w-72 bg-brand-surface border border-brand-line rounded-xl shadow-2xl z-50 py-1 overflow-hidden">
+                <div className="px-3 py-2 border-b border-brand-line-2">
+                  <span className="text-[10px] font-semibold text-brand-ink-3 uppercase tracking-widest">Choose agent</span>
+                </div>
+                <div className="max-h-80 overflow-y-auto py-1">
+                  {AGENTS.map(a => {
+                    const AIcon = AGENT_ICONS_CHAT[a.id];
+                    const isCurrent = a.id === agentId;
+                    return (
+                      <button
+                        key={a.id}
+                        onClick={() => {
+                          setAgentDropOpen(false);
+                          setAgentId(a.id);
+                          if (activeThread && activeThread.agent_id !== a.id) newConversation();
+                        }}
+                        className={cn(
+                          'w-full flex items-center gap-2.5 px-3 py-2.5 text-left transition-colors',
+                          isCurrent ? 'bg-brand-accent-bg' : 'hover:bg-brand-elevated',
+                        )}
+                      >
+                        <div className={cn('w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 text-[11px] font-bold', AGENT_COLOR[a.id] ?? 'bg-slate-100 text-slate-600')}>
+                          {AIcon ? <AIcon className="w-3.5 h-3.5" /> : a.name[0]}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className={cn('text-[12px] font-semibold truncate', isCurrent ? 'text-brand-accent-text' : 'text-brand-ink')}>
+                            {a.name}
+                            {a.status === 'beta' && <span className="ml-1.5 text-[8px] font-bold text-brand-amber bg-brand-amber-bg px-1 py-0.5 rounded">β</span>}
+                          </div>
+                          <div className="text-[10px] text-brand-ink-3 truncate">{a.description.slice(0, 50)}…</div>
+                        </div>
+                        {isCurrent && <CheckCircle2 className="w-3.5 h-3.5 text-brand-accent flex-shrink-0" />}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </div>
+
+          {activeThread && (
+            <div className="flex items-center gap-1.5 text-[11px] text-brand-ink-3">
+              <MessageSquare className="w-3 h-3" />
+              <span className="truncate max-w-[160px]">{activeThread.title}</span>
+            </div>
+          )}
+
           <button
             onClick={() => setDrawerOpen(!drawerOpen)}
-            className={cn('p-1.5 rounded-md transition-all flex-shrink-0', drawerOpen ? 'bg-brand-accent-bg text-brand-accent' : 'text-brand-ink-3 hover:bg-brand-elevated')}
+            className={cn('p-1.5 rounded-md transition-all flex-shrink-0 ml-auto', drawerOpen ? 'bg-brand-accent-bg text-brand-accent' : 'text-brand-ink-3 hover:bg-brand-elevated')}
             title="Toggle templates & memory"
           >
             <Brain className="w-4 h-4" />
@@ -674,8 +692,6 @@ export default function ChatPage() {
           memory={memory}
           onPin={id => setMemory(prev => prev.map(m => m.id === id ? { ...m, pinned: !m.pinned } : m))}
           onDelete={id => setMemory(prev => prev.filter(m => m.id !== id))}
-          agent={agent}
-          onTemplateSelect={t => setActiveTemplate(t)}
         />
       )}
 

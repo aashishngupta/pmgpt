@@ -1400,11 +1400,23 @@ export default function AgentDetailPage() {
   const router = useRouter();
   const agent  = AGENTS.find(a => a.id === params.id);
 
-  const [tab,         setTab]         = useState<Tab>('overview');
-  const [saved,       setSaved]       = useState(false);
-  const [saving,      setSaving]      = useState(false);
-  const [saveError,   setSaveError]   = useState<string | null>(null);
-  const [copilotOpen, setCopilotOpen] = useState(true);
+  const [tab,          setTab]         = useState<Tab>('overview');
+  const [saved,        setSaved]       = useState(false);
+  const [saving,       setSaving]      = useState(false);
+  const [saveError,    setSaveError]   = useState<string | null>(null);
+  const [copilotOpen,  setCopilotOpen] = useState(true);
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setDropdownOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   // Overview state
   const [overview, setOverview] = useState<OverviewState>({
@@ -1495,11 +1507,56 @@ export default function AgentDetailPage() {
           <ArrowLeft className="w-3.5 h-3.5" /> Agents
         </button>
         <span className="text-brand-line-2">/</span>
-        <div className="flex items-center gap-2.5">
-          <div className={cn('w-7 h-7 rounded-lg border border-brand-line flex items-center justify-center', agent.bg)}>
-            <Icon className={cn('w-3.5 h-3.5', agent.color)} />
-          </div>
-          <span className="text-[14px] font-semibold text-brand-ink">{overview.name || agent.name}</span>
+
+        {/* Agent switcher dropdown */}
+        <div className="relative" ref={dropdownRef}>
+          <button
+            onClick={() => setDropdownOpen(v => !v)}
+            className="flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg hover:bg-brand-elevated border border-transparent hover:border-brand-line transition-all group"
+          >
+            <div className={cn('w-7 h-7 rounded-lg border border-brand-line flex items-center justify-center flex-shrink-0', agent.bg)}>
+              <Icon className={cn('w-3.5 h-3.5', agent.color)} />
+            </div>
+            <span className="text-[14px] font-semibold text-brand-ink">{overview.name || agent.name}</span>
+            <ChevronDown className={cn('w-3.5 h-3.5 text-brand-ink-3 transition-transform', dropdownOpen && 'rotate-180')} />
+          </button>
+
+          {dropdownOpen && (
+            <div className="absolute top-full left-0 mt-1 w-64 bg-brand-surface border border-brand-line rounded-xl shadow-xl z-50 py-1 overflow-hidden">
+              <div className="px-3 py-2 border-b border-brand-line-2">
+                <span className="text-[10px] font-semibold text-brand-ink-3 uppercase tracking-widest">Switch agent</span>
+              </div>
+              <div className="max-h-72 overflow-y-auto py-1">
+                {AGENTS.map(a => {
+                  const AIcon = AGENT_ICONS[a.id] ?? Zap;
+                  const isCurrent = a.id === agent.id;
+                  return (
+                    <button
+                      key={a.id}
+                      onClick={() => { setDropdownOpen(false); if (!isCurrent) router.push(`/dashboard/agents/${a.id}`); }}
+                      className={cn(
+                        'w-full flex items-center gap-2.5 px-3 py-2 text-left transition-colors',
+                        isCurrent ? 'bg-brand-accent-bg' : 'hover:bg-brand-elevated',
+                      )}
+                    >
+                      <div className={cn('w-6 h-6 rounded-md border border-brand-line flex items-center justify-center flex-shrink-0', a.bg)}>
+                        <AIcon className={cn('w-3 h-3', a.color)} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className={cn('text-[12px] font-medium truncate', isCurrent ? 'text-brand-accent-text' : 'text-brand-ink')}>{a.name}</div>
+                        <div className="text-[10px] text-brand-ink-3 truncate">{a.description.slice(0, 42)}…</div>
+                      </div>
+                      {isCurrent && <CheckCircle2 className="w-3.5 h-3.5 text-brand-accent flex-shrink-0" />}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Status badge + trigger count */}
+        <div className="flex items-center gap-2">
           <span className={cn('text-[10px] font-semibold px-1.5 py-[3px] rounded uppercase tracking-wide', {
             'bg-brand-green-bg text-brand-green': active && agent.status === 'active',
             'bg-brand-amber-bg text-brand-amber': active && agent.status === 'beta',
