@@ -1,5 +1,18 @@
+'use client';
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { SettingsSidebar } from '@/components/settings/SettingsSidebar';
 import { Bell, HelpCircle, Search } from 'lucide-react';
+
+function AuthGuard({ children }: { children: React.ReactNode }) {
+  const router = useRouter();
+  useEffect(() => {
+    if (!localStorage.getItem('pmgpt_access_token')) {
+      router.replace('/login');
+    }
+  }, [router]);
+  return <>{children}</>;
+}
 
 function TopBar() {
   return (
@@ -38,12 +51,14 @@ function TopBar() {
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="flex h-screen bg-brand-canvas overflow-hidden">
-      <SettingsSidebar />
-      <div className="flex-1 flex flex-col overflow-hidden">
-        <TopBar />
-        <main className="flex-1 overflow-y-auto">{children}</main>
+    <AuthGuard>
+      <div className="flex h-screen bg-brand-canvas overflow-hidden">
+        <SettingsSidebar />
+        <div className="flex-1 flex flex-col overflow-hidden">
+          <TopBar />
+          <main className="flex-1 overflow-y-auto">{children}</main>
+        </div>
       </div>
-    </div>
+    </AuthGuard>
   );
 }

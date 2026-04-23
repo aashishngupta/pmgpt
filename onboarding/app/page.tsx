@@ -1,5 +1,12 @@
-// Middleware handles / routing: authenticated → /dashboard, unauthenticated → landing page
-// This only renders if middleware is bypassed (e.g. direct server render with no cookie)
+'use client';
+import { useEffect } from 'react';
+
+// Middleware rewrites / to /landing.html (static file).
+// This component runs if client-side navigation lands on / directly.
 export default function Root() {
+  useEffect(() => {
+    const token = localStorage.getItem('pmgpt_access_token');
+    window.location.replace(token ? '/dashboard' : '/landing.html');
+  }, []);
   return null;
 }
