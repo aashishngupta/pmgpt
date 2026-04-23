@@ -1,13 +1,5 @@
-'use client';
-
-import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-
+// Middleware handles / routing: authenticated → /dashboard, unauthenticated → landing page
+// This only renders if middleware is bypassed (e.g. direct server render with no cookie)
 export default function Root() {
-  const router = useRouter();
-  useEffect(() => {
-    const token = localStorage.getItem('pmgpt_access_token');
-    router.replace(token ? '/dashboard' : '/onboarding/signup');
-  }, [router]);
   return null;
 }

@@ -1,0 +1,13 @@
+{
+  "name": "pmgpt",
+  "private": true,
+  "scripts": {
+    "dev": "concurrently --names \"backend,frontend\" --prefix-colors \"cyan,magenta\" \"uvicorn backend.main:app --reload --port 8000\" \"cd onboarding && npm run dev\"",
+    "frontend": "cd onboarding && npm run dev",
+    "backend": "uvicorn backend.main:app --reload --port 8000",
+    "install:frontend": "cd onboarding && npm install"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}
