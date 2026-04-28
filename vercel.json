@@ -1,9 +1,6 @@
 {
-  "rewrites": [
-    { "source": "/chat",    "destination": "/api/index" },
-    { "source": "/health",  "destination": "/api/index" },
-    { "source": "/agents",  "destination": "/api/index" },
-    { "source": "/app",     "destination": "/frontend/app.html" },
-    { "source": "/",        "destination": "/frontend/index.html" }
-  ]
+  "buildCommand": "cd onboarding && npm install && npm run build",
+  "outputDirectory": "onboarding/.next",
+  "installCommand": "cd onboarding && npm install",
+  "framework": "nextjs"
 }
