@@ -1,6 +1,18 @@
 // ── Agent definitions ────────────────────────────────────────────────────────
 
-export type AgentId = 'strategy' | 'docs' | 'analytics' | 'research' | 'ops' | 'review' | 'engineering' | 'competitive' | 'sales' | 'coach' | 'prioritization' | 'release' | 'market';
+export type AgentId =
+  // Intelligence — Signal Collection
+  | 'research' | 'analytics' | 'competitive' | 'market' | 'social_signal'
+  // Research Synthesis
+  | 'signal_aggregator' | 'research_orchestrator'
+  // Strategy
+  | 'strategy' | 'prioritization'
+  // Execution
+  | 'docs' | 'engineering' | 'ops'
+  // Launch
+  | 'release' | 'gtm' | 'sales'
+  // PM Growth & Quality
+  | 'review' | 'coach';
 export type LLMModel = 'claude-opus-4-6' | 'claude-sonnet-4-6' | 'gpt-4o' | 'gemini-1.5-pro' | 'mistral-local';
 export type AgentStatus = 'active' | 'inactive' | 'beta';
 export type UserRole = 'viewer' | 'pm' | 'pm_lead' | 'admin';
@@ -18,7 +30,8 @@ export interface AgentTool {
   name: string;
   description: string;
   connector?: string;
-  category: 'read' | 'write' | 'notify' | 'compute';
+  agentId?: AgentId; // populated when category === 'agent_call'
+  category: 'read' | 'write' | 'notify' | 'compute' | 'agent_call';
   requiresApproval: boolean;
   enabled: boolean;
 }
@@ -33,6 +46,11 @@ export interface AgentTrigger {
   outputDest: 'home_screen' | 'slack' | 'notion' | 'email' | 'confluence';
   enabled: boolean;
 }
+
+export type AgentCategory = 'strategy' | 'execution' | 'research' | 'intelligence' | 'ops' | 'launch' | 'quality';
+export type TrustLevel = 'sandboxed' | 'assisted' | 'autonomous';
+export type InvocationSurface = 'chat' | 'workflow' | 'home' | 'background';
+export type ReasoningMode = 'fast' | 'balanced' | 'deep';
 
 export interface Agent {
   id: AgentId;
@@ -57,6 +75,13 @@ export interface Agent {
   templates: AgentTemplate[];
   recommendedMcps: string[];
   stats: { queries: number; avgLatencyMs: number; satisfactionPct: number; tokensUsed: number };
+  category: AgentCategory;
+  trustLevel: TrustLevel;
+  invocationSurfaces: InvocationSurface[];
+  primaryOutputTypes: string[];
+  reasoningMode: ReasoningMode;
+  healthScore: number;
+  linkedAgents?: AgentId[]; // agents this agent can call internally
 }
 
 export const AGENTS: Agent[] = [
@@ -95,36 +120,76 @@ export const AGENTS: Agent[] = [
       { id: 'jira_read',      name: 'Read Jira epics',         description: 'Fetch roadmap epics and current sprint data from Jira',    connector: 'jira',      category: 'read',    requiresApproval: false, enabled: true  },
       { id: 'notion_write',   name: 'Push to Notion',          description: 'Create or update a Notion page with strategy output',      connector: 'notion',    category: 'write',   requiresApproval: true,  enabled: true  },
       { id: 'jira_epic',      name: 'Create Jira Epic',        description: 'Create a new Jira epic from a roadmap initiative',         connector: 'jira',      category: 'write',   requiresApproval: true,  enabled: true  },
-      { id: 'gdrive_export',  name: 'Export to Google Doc',    description: 'Save strategy doc as a Google Doc',                        connector: 'gdrive',    category: 'write',   requiresApproval: true,  enabled: false },
+      { id: 'gdrive_export',    name: 'Export to Google Doc',     description: 'Save strategy doc as a Google Doc',                          connector: 'gdrive',    category: 'write',      requiresApproval: true,  enabled: false },
+      { id: 'call_research',    name: 'Pull market + user signal', description: 'Call Research Orchestrator to gather signals for strategy',  agentId: 'research_orchestrator', category: 'agent_call', requiresApproval: false, enabled: true  },
+      { id: 'call_market',      name: 'Pull market intelligence',  description: 'Call Market Intelligence for TAM, trends, macro signals',    agentId: 'market',      category: 'agent_call', requiresApproval: false, enabled: true  },
     ],
     triggers: [
-      { id: 'qtr_plan', type: 'schedule', label: 'Quarterly planning digest', description: 'Generate OKR review and strategic priorities for the quarter', schedule: '0 9 1 */3 *', outputDest: 'notion', enabled: false },
-      { id: 'roadmap_review', type: 'event', label: 'Roadmap change detected', description: 'When Jira epics are added or removed from the roadmap, run a strategic impact review', event: 'jira_epic_changed', outputDest: 'home_screen', enabled: false },
+      { id: 'qtr_plan',       type: 'schedule', label: 'Quarterly planning digest',  description: 'Generate OKR review and strategic priorities for the quarter', schedule: '0 9 1 */3 *', outputDest: 'notion',      enabled: false },
+      { id: 'roadmap_review', type: 'event',    label: 'Roadmap change detected',    description: 'When Jira epics are added or removed, run a strategic impact review', event: 'jira_epic_changed', outputDest: 'home_screen', enabled: false },
     ],
     templates: [
       {
         id: 'okr-draft',
         name: 'Draft OKRs',
-        description: 'Generate a full OKR set for a quarter',
+        description: 'Generate a full OKR set for a quarter aligned to company goals',
         fields: [
-          { key: 'product_area', label: 'Product area', placeholder: 'e.g. Activation & Onboarding', required: true },
-          { key: 'company_goal', label: 'Company goal this quarter', placeholder: 'e.g. Reach $150k MRR', required: true },
-          { key: 'current_metrics', label: 'Current baseline metrics', placeholder: 'e.g. Activation 38%, MRR $142k', required: false },
+          { key: 'product_area',     label: 'Product area',               placeholder: 'e.g. Activation & Onboarding',          required: true  },
+          { key: 'company_goal',     label: 'Company goal this quarter',   placeholder: 'e.g. Reach $150k MRR',                  required: true  },
+          { key: 'current_metrics',  label: 'Current baseline metrics',    placeholder: 'e.g. Activation 38%, MRR $142k',        required: false },
+          { key: 'last_quarter',     label: 'Last quarter OKR score',      placeholder: 'How did last quarter\'s OKRs score?',   required: false },
         ],
-        systemHint: 'Generate 3-4 objectives with 2-3 measurable key results each. Use SMART criteria.',
+        systemHint: 'Use workspace okrFormat and okrLevels. Generate 3 objectives with 2-3 key results each. KRs must be measurable with baseline + target. Each KR maps to a workspace success metric format. Flag any KR that lacks a measurable baseline. End with: biggest risk to hitting these OKRs.',
       },
       {
-        id: 'roadmap-review',
-        name: 'Roadmap Review',
-        description: 'Critique and improve a product roadmap',
+        id: 'okr-review',
+        name: 'OKR Mid-Quarter Review',
+        description: 'Review progress on current OKRs — identify what\'s on track and what\'s at risk',
         fields: [
-          { key: 'roadmap_items', label: 'Roadmap items (paste or describe)', placeholder: 'List features/initiatives planned', required: true },
-          { key: 'company_stage', label: 'Company stage', placeholder: 'e.g. Series B, 50k MAU', required: false },
+          { key: 'okrs',         label: 'Current OKRs + scores',   placeholder: 'Paste OKRs with current scores (0.0–1.0)',     required: true  },
+          { key: 'context',      label: 'What\'s changed',          placeholder: 'Major events since OKRs were set',             required: false },
         ],
-        systemHint: 'Review for strategic alignment, resource feasibility, dependencies, and missing bets. Be direct.',
+        systemHint: 'For each KR: current score, on track/at risk/off track assessment, root cause if at risk, action needed. Recommend: which OKRs to drop/deprioritize if team is overloaded. End with: 3 decisions the PM needs to make in the next 2 weeks.',
+      },
+      {
+        id: 'roadmap-planning',
+        name: 'Roadmap Planning',
+        description: 'Build or review a half-year roadmap with strategic rationale',
+        fields: [
+          { key: 'initiatives',   label: 'Candidate initiatives',   placeholder: 'List the things you\'re considering for H2',   required: true  },
+          { key: 'okrs',          label: 'Target OKRs',             placeholder: 'What OKRs does this roadmap need to serve?',   required: true  },
+          { key: 'capacity',      label: 'Team capacity',            placeholder: 'e.g. 3 engineers, 1 designer, 6 months',      required: false },
+        ],
+        systemHint: 'First call research_orchestrator and market for external signals. Then: group initiatives into Now/Next/Later. For each: strategic rationale, OKR it serves, dependencies, rough effort. Identify missing bets and explicit cut decisions. Flag top 3 risks to the plan.',
+      },
+      {
+        id: 'strategic-bet',
+        name: 'Strategic Bet 1-Pager',
+        description: '1-page case for a bold product bet — for exec alignment',
+        fields: [
+          { key: 'bet',          label: 'The bet',              placeholder: 'What are we proposing to do?',                required: true  },
+          { key: 'why_now',      label: 'Why now?',             placeholder: 'What\'s changed that makes this the right time?', required: true },
+          { key: 'what_we_win',  label: 'What we win',          placeholder: 'Best case outcome if this works',              required: true  },
+          { key: 'what_we_risk', label: 'What we risk',         placeholder: 'Downside if it doesn\'t work',                 required: false },
+        ],
+        systemHint: 'Call research_orchestrator for supporting user signals. Call market for competitive and market context. Structure: The Bet (1 sentence), Why Now (market + internal signal), What We Win (specific metric impact), What We Risk (honest), What Needs to Be True for This to Work (3 assumptions), Ask (what you need approved).',
+      },
+      {
+        id: 'roadmap-comms',
+        name: 'Roadmap Communication',
+        description: 'Communicate the roadmap to different audiences (exec, eng, sales)',
+        fields: [
+          { key: 'roadmap',    label: 'Roadmap (paste or describe)', placeholder: 'Your current roadmap initiatives',          required: true  },
+          { key: 'audience',   label: 'Target audience',             placeholder: 'e.g. Board, Engineering, Sales team',      required: true  },
+          { key: 'quarter',    label: 'Quarter this covers',         placeholder: 'e.g. Q3 2026',                             required: false },
+        ],
+        systemHint: 'Tailor language and depth for the audience. Board: outcomes + strategic rationale + risks. Engineering: sequencing + dependencies + scope clarity. Sales: what\'s shipping + timeline + what they can promise customers. Never share internal scoring or trade-off analysis externally.',
       },
     ],
     stats: { queries: 1847, avgLatencyMs: 2100, satisfactionPct: 91, tokensUsed: 3840000 },
+    category: 'strategy', trustLevel: 'assisted', invocationSurfaces: ['chat', 'workflow', 'home'],
+    primaryOutputTypes: ['Roadmaps', 'OKR Sets', '1-Pagers', 'Strategic Bets'], reasoningMode: 'deep', healthScore: 94,
+    linkedAgents: ['research_orchestrator', 'market', 'prioritization', 'signal_aggregator'],
   },
   {
     id: 'docs',
@@ -161,7 +226,9 @@ export const AGENTS: Agent[] = [
       { id: 'jira_read',      name: 'Read Jira tickets',          description: 'Read epic context and linked stories from Jira',             connector: 'jira',       category: 'read',  requiresApproval: false, enabled: true  },
       { id: 'notion_write',   name: 'Push PRD to Notion',         description: 'Create a new Notion page with the generated PRD',            connector: 'notion',     category: 'write', requiresApproval: true,  enabled: true  },
       { id: 'jira_stories',   name: 'Generate Jira stories',      description: 'Create Jira user stories and sub-tasks from PRD scope',       connector: 'jira',       category: 'write', requiresApproval: true,  enabled: true  },
-      { id: 'confluence_write',name: 'Create Confluence page',    description: 'Publish the spec to a Confluence space',                     connector: 'confluence', category: 'write', requiresApproval: true,  enabled: false },
+      { id: 'confluence_write',name: 'Create Confluence page',    description: 'Publish the spec to a Confluence space',                     connector: 'confluence', category: 'write',      requiresApproval: true,  enabled: false },
+      { id: 'call_research',  name: 'Pull user research',        description: 'Call Research Orchestrator to pre-populate user insights',     agentId: 'research_orchestrator', category: 'agent_call', requiresApproval: false, enabled: true  },
+      { id: 'call_analytics', name: 'Pull usage data',           description: 'Call Analytics agent to pull relevant usage metrics',          agentId: 'analytics',    category: 'agent_call', requiresApproval: false, enabled: true  },
     ],
     triggers: [
       { id: 'prd_from_epic', type: 'event', label: 'Jira epic created', description: 'When a new Jira epic is created, auto-draft a PRD outline', event: 'jira_epic_created', outputDest: 'notion', enabled: false },
@@ -170,28 +237,65 @@ export const AGENTS: Agent[] = [
       {
         id: 'prd',
         name: 'Full PRD',
-        description: 'Production-ready PRD with all sections',
+        description: 'Production-ready PRD with research + metrics auto-populated',
         fields: [
-          { key: 'feature_name', label: 'Feature name', placeholder: 'e.g. Email Verification Gate', required: true },
-          { key: 'problem', label: 'Problem statement', placeholder: 'What pain are we solving, for whom?', required: true },
-          { key: 'success_metrics', label: 'Success metrics', placeholder: 'e.g. Activation +5%, churn -1%', required: true },
-          { key: 'constraints', label: 'Constraints & dependencies', placeholder: 'Timeline, tech limitations, dependencies', required: false },
+          { key: 'feature_name',    label: 'Feature name',              placeholder: 'e.g. Email Verification Gate',             required: true  },
+          { key: 'problem',         label: 'Problem statement',          placeholder: 'What pain are we solving, for whom?',      required: true  },
+          { key: 'success_metrics', label: 'Success metrics',            placeholder: 'e.g. Activation +5%, churn -1%',           required: true  },
+          { key: 'constraints',     label: 'Constraints & dependencies', placeholder: 'Timeline, tech limitations, dependencies', required: false },
         ],
-        systemHint: 'Write a complete PRD with: Executive Summary, Problem, Goals, Non-goals, User Stories, AC, Edge Cases, Analytics, Open Questions.',
+        systemHint: 'First call research_orchestrator to pull user signals for this feature area. Then call analytics for baseline metrics. Write PRD: Executive Summary, Problem (cite research), Goals, Non-goals, User Stories (use workspace personas + story format), AC, Edge Cases, Analytics Plan, Open Questions. Success metrics must match workspace successMetricFormat.',
       },
       {
         id: 'user-stories',
         name: 'User Story Batch',
-        description: 'Generate Jira-ready user stories',
+        description: 'Generate Jira-ready user stories in your org\'s exact format',
         fields: [
-          { key: 'epic', label: 'Epic / feature area', placeholder: 'e.g. Onboarding redesign', required: true },
-          { key: 'personas', label: 'User personas', placeholder: 'e.g. New PM, Enterprise admin', required: true },
-          { key: 'scope', label: 'Scope description', placeholder: 'What should this epic cover?', required: true },
+          { key: 'epic',     label: 'Epic / feature area',  placeholder: 'e.g. Onboarding redesign',              required: true  },
+          { key: 'personas', label: 'User personas',         placeholder: 'Leave blank to use workspace personas', required: false },
+          { key: 'scope',    label: 'Scope description',     placeholder: 'What should this epic cover?',          required: true  },
+          { key: 'count',    label: 'Number of stories',     placeholder: 'e.g. 8 (default)',                      required: false },
         ],
-        systemHint: 'Generate 8-12 user stories in format: As a [persona], I want [action] so that [benefit]. Include acceptance criteria for each.',
+        systemHint: 'Use workspace storyFormat template and persona library. Generate stories with full AC. Each story must include workspace requiredFields (story points, persona, OKR key result). Format story point estimates using workspace storyPointScale.',
+      },
+      {
+        id: 'lean-prd',
+        name: 'Lean PRD (2-pager)',
+        description: 'Fast 2-page spec for speed-of-light shipping',
+        fields: [
+          { key: 'feature_name', label: 'Feature name',    placeholder: 'e.g. Onboarding checklist',        required: true },
+          { key: 'problem',      label: 'Problem (1 line)', placeholder: 'The exact problem this solves',    required: true },
+          { key: 'okr',         label: 'OKR it serves',    placeholder: 'Which key result does this move?', required: true },
+        ],
+        systemHint: 'Write a tight 2-page spec: Problem (2 sentences), Solution (3 bullet points), Success metric (1 number), User stories (3 max), Edge cases (3 max), Open questions (2 max). No fluff.',
+      },
+      {
+        id: 'rfc',
+        name: 'RFC (Request for Comments)',
+        description: 'Technical RFC for significant architecture or product decisions',
+        fields: [
+          { key: 'title',     label: 'RFC title',          placeholder: 'e.g. Migrate auth to JWT + refresh tokens', required: true  },
+          { key: 'context',   label: 'Context',             placeholder: 'Why is this decision needed now?',          required: true  },
+          { key: 'options',   label: 'Options considered',  placeholder: 'List 2-4 approaches considered',            required: true  },
+          { key: 'preferred', label: 'Preferred option',    placeholder: 'Which option and why?',                     required: false },
+        ],
+        systemHint: 'Structure: Summary, Context & Motivation, Considered Options (each with pros/cons), Recommended Option with rationale, Trade-offs & Risks, Open Questions, Decision owners and deadline.',
+      },
+      {
+        id: 'acceptance-criteria',
+        name: 'Acceptance Criteria',
+        description: 'Write precise AC for a feature or story — QA-ready',
+        fields: [
+          { key: 'story',   label: 'User story or feature', placeholder: 'Paste the story or describe the feature', required: true  },
+          { key: 'context', label: 'Edge cases to cover',   placeholder: 'Any known edge cases or exceptions',       required: false },
+        ],
+        systemHint: 'Write Given/When/Then AC for every happy path and the top 3 edge cases. Flag any ambiguity as an open question. Be specific enough for QA to write tests directly from AC without additional clarification.',
       },
     ],
     stats: { queries: 3204, avgLatencyMs: 1800, satisfactionPct: 94, tokensUsed: 8200000 },
+    category: 'execution', trustLevel: 'assisted', invocationSurfaces: ['chat', 'workflow'],
+    primaryOutputTypes: ['PRDs', 'User Stories', 'Specs', 'RFCs'], reasoningMode: 'balanced', healthScore: 97,
+    linkedAgents: ['research_orchestrator', 'analytics', 'review'],
   },
   {
     id: 'analytics',
@@ -258,6 +362,8 @@ export const AGENTS: Agent[] = [
       },
     ],
     stats: { queries: 2891, avgLatencyMs: 2400, satisfactionPct: 88, tokensUsed: 6100000 },
+    category: 'intelligence', trustLevel: 'sandboxed', invocationSurfaces: ['chat', 'home', 'background'],
+    primaryOutputTypes: ['KPI Digests', 'RCA Reports', 'A/B Readouts'], reasoningMode: 'deep', healthScore: 88,
   },
   {
     id: 'research',
@@ -322,6 +428,8 @@ export const AGENTS: Agent[] = [
       },
     ],
     stats: { queries: 1523, avgLatencyMs: 1900, satisfactionPct: 92, tokensUsed: 3200000 },
+    category: 'research', trustLevel: 'assisted', invocationSurfaces: ['chat', 'workflow'],
+    primaryOutputTypes: ['VOC Reports', 'Survey Designs', 'Insight Reports'], reasoningMode: 'balanced', healthScore: 92,
   },
   {
     id: 'ops',
@@ -365,30 +473,69 @@ export const AGENTS: Agent[] = [
     ],
     templates: [
       {
+        id: 'sprint-planning',
+        name: 'Sprint Planning',
+        description: 'Plan the upcoming sprint — goal, stories, capacity',
+        fields: [
+          { key: 'sprint_number',  label: 'Sprint number',            placeholder: 'e.g. 24',                                        required: true  },
+          { key: 'theme',          label: 'Sprint theme / focus',      placeholder: 'e.g. Activation & Onboarding',                   required: true  },
+          { key: 'capacity',       label: 'Team capacity (story pts)', placeholder: 'e.g. 34 points across 3 engineers',              required: true  },
+          { key: 'candidates',     label: 'Candidate backlog items',   placeholder: 'Paste or list items from backlog to consider',    required: false },
+          { key: 'carryover',      label: 'Carryover from last sprint',placeholder: 'Any stories that didn\'t make it last sprint',   required: false },
+        ],
+        systemHint: 'Use workspace sprintNamingFormat. Output: Sprint goal (1 sentence tied to OKR), committed stories (bulleted, with points), stretch goals, risks, and definition of done reminder. Stay within capacity. Flag if carryover is excessive.',
+      },
+      {
         id: 'sprint-summary',
         name: 'Sprint Summary',
-        description: 'End-of-sprint summary for stakeholders',
+        description: 'End-of-sprint summary — stakeholder-ready',
         fields: [
-          { key: 'sprint_name', label: 'Sprint name', placeholder: 'e.g. Sprint 24 — Activation', required: true },
-          { key: 'shipped', label: 'What shipped', placeholder: 'List completed stories/features', required: true },
-          { key: 'spillover', label: 'Spillover (if any)', placeholder: 'What didn\'t make it and why', required: false },
-          { key: 'next_sprint', label: 'Next sprint preview', placeholder: 'Top priorities for next sprint', required: false },
+          { key: 'sprint_name',  label: 'Sprint name',          placeholder: 'e.g. Sprint 24 — Activation',          required: true  },
+          { key: 'shipped',      label: 'What shipped',          placeholder: 'List completed stories/features',       required: true  },
+          { key: 'spillover',    label: 'Spillover (if any)',    placeholder: 'What didn\'t make it and why',          required: false },
+          { key: 'next_sprint',  label: 'Next sprint preview',   placeholder: 'Top priorities for next sprint',        required: false },
         ],
-        systemHint: 'Format: 3-sentence executive summary, shipped items (bulleted), spillover with reason, metrics impact if any, next sprint preview.',
+        systemHint: 'Format: 3-sentence executive summary, shipped items (bulleted with impact), spillover with reason, metrics impact if any, next sprint preview. Tailor language for stakeholders — no internal jargon.',
+      },
+      {
+        id: 'sprint-retro',
+        name: 'Sprint Retrospective',
+        description: 'Structured retro: what worked, what didn\'t, what changes',
+        fields: [
+          { key: 'sprint_name', label: 'Sprint name',       placeholder: 'e.g. Sprint 24',                          required: true  },
+          { key: 'went_well',   label: 'What went well',    placeholder: 'List 3-5 things that worked well',        required: true  },
+          { key: 'went_wrong',  label: 'What went wrong',   placeholder: 'List blockers, delays, or friction points',required: true  },
+          { key: 'team_mood',   label: 'Team mood / vibe',  placeholder: 'e.g. energized, drained, uncertain',      required: false },
+        ],
+        systemHint: 'Structure: What worked (celebrate), What didn\'t (root cause, not blame), Patterns noticed, 3 specific action items with owners for next sprint. End with one sentence on team health.',
       },
       {
         id: 'standup',
         name: 'Daily Standup',
         description: 'Generate daily standup update',
         fields: [
-          { key: 'yesterday', label: 'What I did yesterday', placeholder: 'Key tasks completed', required: true },
-          { key: 'today', label: 'What I\'m doing today', placeholder: 'Key tasks planned', required: true },
-          { key: 'blockers', label: 'Blockers (if any)', placeholder: 'What\'s blocking progress', required: false },
+          { key: 'yesterday', label: 'What I did yesterday',   placeholder: 'Key tasks completed',          required: true  },
+          { key: 'today',     label: 'What I\'m doing today',  placeholder: 'Key tasks planned',            required: true  },
+          { key: 'blockers',  label: 'Blockers (if any)',      placeholder: 'What\'s blocking progress',    required: false },
         ],
-        systemHint: 'Write a crisp standup in under 100 words. Lead with impact, not tasks.',
+        systemHint: 'Write a crisp standup in under 100 words. Lead with impact, not tasks. If there are blockers, name the owner who can unblock.',
+      },
+      {
+        id: 'meeting-notes',
+        name: 'Meeting Notes',
+        description: 'Structured meeting notes with decisions and action items',
+        fields: [
+          { key: 'meeting_type', label: 'Meeting type',    placeholder: 'e.g. Product review, Strategy sync, Design crit', required: true  },
+          { key: 'attendees',    label: 'Attendees',        placeholder: 'List names/roles',                                required: false },
+          { key: 'raw_notes',    label: 'Raw notes',        placeholder: 'Paste your rough notes or transcript',            required: true  },
+        ],
+        systemHint: 'Structure: Context (1 line), Key Discussion Points, Decisions Made (numbered, each with rationale), Action Items (owner + deadline for each), Open Questions, Next Meeting focus. Be concise — if it can be a bullet, make it one.',
       },
     ],
     stats: { queries: 4102, avgLatencyMs: 1200, satisfactionPct: 96, tokensUsed: 4800000 },
+    category: 'ops', trustLevel: 'assisted', invocationSurfaces: ['chat', 'workflow', 'background'],
+    primaryOutputTypes: ['Sprint Plans', 'Standups', 'Sprint Summaries', 'Retros'], reasoningMode: 'fast', healthScore: 96,
+    linkedAgents: ['analytics', 'prioritization'],
   },
   {
     id: 'engineering',
@@ -443,6 +590,8 @@ export const AGENTS: Agent[] = [
       },
     ],
     stats: { queries: 412, avgLatencyMs: 2800, satisfactionPct: 87, tokensUsed: 980000 },
+    category: 'execution', trustLevel: 'sandboxed', invocationSurfaces: ['chat', 'workflow'],
+    primaryOutputTypes: ['Tech Briefs', 'Gap Analyses', 'Incident Reports'], reasoningMode: 'deep', healthScore: 87,
   },
   {
     id: 'competitive',
@@ -496,6 +645,8 @@ export const AGENTS: Agent[] = [
       },
     ],
     stats: { queries: 334, avgLatencyMs: 3100, satisfactionPct: 85, tokensUsed: 720000 },
+    category: 'intelligence', trustLevel: 'assisted', invocationSurfaces: ['chat', 'background'],
+    primaryOutputTypes: ['Battlecards', 'Market Sweeps', 'Win/Loss Reports'], reasoningMode: 'deep', healthScore: 85,
   },
   {
     id: 'sales',
@@ -550,6 +701,8 @@ export const AGENTS: Agent[] = [
       },
     ],
     stats: { queries: 621, avgLatencyMs: 1700, satisfactionPct: 89, tokensUsed: 1340000 },
+    category: 'execution', trustLevel: 'assisted', invocationSurfaces: ['chat', 'workflow'],
+    primaryOutputTypes: ['One-Pagers', 'ROI Narratives', 'Demo Scripts'], reasoningMode: 'balanced', healthScore: 89,
   },
   {
     id: 'review',
@@ -602,6 +755,8 @@ export const AGENTS: Agent[] = [
       },
     ],
     stats: { queries: 892, avgLatencyMs: 1900, satisfactionPct: 90, tokensUsed: 1780000 },
+    category: 'execution', trustLevel: 'sandboxed', invocationSurfaces: ['chat', 'workflow'],
+    primaryOutputTypes: ['Review Reports', 'Release Notes', 'Changelogs'], reasoningMode: 'balanced', healthScore: 90,
   },
   {
     id: 'coach',
@@ -648,6 +803,8 @@ export const AGENTS: Agent[] = [
       },
     ],
     stats: { queries: 731, avgLatencyMs: 2200, satisfactionPct: 95, tokensUsed: 1620000 },
+    category: 'ops', trustLevel: 'sandboxed', invocationSurfaces: ['chat'],
+    primaryOutputTypes: ['Career Plans', 'Feedback Docs', 'STAR Stories'], reasoningMode: 'deep', healthScore: 95,
   },
   {
     id: 'prioritization',
@@ -679,9 +836,11 @@ export const AGENTS: Agent[] = [
       'Show your work: score, weight, rationale for each factor',
     ],
     tools: [
-      { id: 'jira_read',    name: 'Read Jira backlog',      description: 'Pull the full backlog and estimates from Jira',              connector: 'jira',   category: 'read',  requiresApproval: false, enabled: true  },
-      { id: 'notion_read',  name: 'Read roadmap context',   description: 'Read strategic context and OKRs from Notion',               connector: 'notion', category: 'read',  requiresApproval: false, enabled: true  },
-      { id: 'jira_update',  name: 'Update Jira priority',   description: 'Set priority field and add rationale comment in Jira',      connector: 'jira',   category: 'write', requiresApproval: true,  enabled: true  },
+      { id: 'jira_read',        name: 'Read Jira backlog',      description: 'Pull the full backlog and estimates from Jira',                 connector: 'jira',    category: 'read',      requiresApproval: false, enabled: true  },
+      { id: 'notion_read',      name: 'Read roadmap context',   description: 'Read strategic context and OKRs from Notion',                  connector: 'notion',  category: 'read',      requiresApproval: false, enabled: true  },
+      { id: 'jira_update',      name: 'Update Jira priority',   description: 'Set priority field and add rationale comment in Jira',         connector: 'jira',    category: 'write',     requiresApproval: true,  enabled: true  },
+      { id: 'call_research',    name: 'Pull demand signals',    description: 'Call Research Orchestrator to validate demand for a feature',  agentId: 'research_orchestrator', category: 'agent_call', requiresApproval: false, enabled: true  },
+      { id: 'call_engineering', name: 'Pull effort estimate',   description: 'Call Engineering agent for feasibility and effort estimate',   agentId: 'engineering', category: 'agent_call', requiresApproval: false, enabled: true  },
     ],
     triggers: [
       { id: 'sales_request', type: 'event', label: 'Sales feature request', description: 'When a sales feature request ticket is created, auto-score it against the backlog', event: 'jira_issue_created', outputDest: 'home_screen', enabled: false },
@@ -690,16 +849,52 @@ export const AGENTS: Agent[] = [
       {
         id: 'rank-features',
         name: 'Rank Features',
-        description: 'Score and rank a list of backlog items',
+        description: 'Score and rank backlog items using your workspace framework',
         fields: [
-          { key: 'features', label: 'Features to rank (list)', placeholder: 'Paste 3-10 feature names or descriptions', required: true },
-          { key: 'okrs', label: 'Current OKRs', placeholder: 'What are you optimising for this quarter?', required: true },
-          { key: 'constraints', label: 'Constraints', placeholder: 'e.g. 2 engineers, 6 weeks, no infra changes', required: false },
+          { key: 'features',    label: 'Features to rank',   placeholder: 'Paste 3-10 feature names or descriptions',    required: true  },
+          { key: 'okrs',        label: 'Current OKRs',        placeholder: 'What are you optimising for this quarter?',   required: true  },
+          { key: 'constraints', label: 'Constraints',          placeholder: 'e.g. 2 engineers, 6 weeks, no infra changes', required: false },
         ],
-        systemHint: 'Score each on 0-10: strategic alignment, user impact, biz value, effort (inverted), risk (inverted). Show ranking table + key trade-offs.',
+        systemHint: 'Use workspace prioritization framework and factor weights. Score each feature per factor (0-10). Show ranking table with scores per factor, weighted total, and rank. Highlight key trade-offs and the most controversial ranking. Call research_orchestrator to validate demand signal for top 3 items.',
+      },
+      {
+        id: 'stakeholder-request',
+        name: 'Stakeholder Request Evaluation',
+        description: 'Evaluate a feature request from sales, exec, or customer with evidence',
+        fields: [
+          { key: 'request',       label: 'The request',          placeholder: 'What is being asked for and by whom?',             required: true  },
+          { key: 'context',       label: 'Context',               placeholder: 'e.g. $200k deal, enterprise customer churning',   required: true  },
+          { key: 'requestor',     label: 'Requestor & influence', placeholder: 'e.g. Head of Sales, high influence on roadmap',   required: false },
+        ],
+        systemHint: 'Use workspace dealValueThresholds and stakeholder influence map. Score against workspace prioritization factors. Pull demand signal from research_orchestrator. Output: Recommendation (build/partial/defer/no), Score breakdown, Evidence for demand, Opportunity cost of doing it now vs later, Suggested response to the requestor.',
+      },
+      {
+        id: 'say-no-document',
+        name: 'Structured Decline',
+        description: 'Say no to a request with data — not opinion',
+        fields: [
+          { key: 'request',     label: 'Request being declined',  placeholder: 'What was asked?',                                  required: true  },
+          { key: 'requestor',   label: 'Requestor',               placeholder: 'Who asked and their role',                         required: true  },
+          { key: 'reason',      label: 'Core reason for no',      placeholder: 'Why are we not doing this now?',                   required: true  },
+        ],
+        systemHint: 'Write a respectful, data-backed decline. Structure: Acknowledge the request + underlying need, Why it doesn\'t fit now (with scoring evidence), What we\'re doing instead that serves a similar goal, When it might be reconsidered (specific conditions), Next steps. Never say "no" without showing the trade-off clearly.',
+      },
+      {
+        id: 'trade-off-analysis',
+        name: 'Trade-off Analysis',
+        description: 'Deep comparison of two competing initiatives or approaches',
+        fields: [
+          { key: 'option_a',    label: 'Option A',   placeholder: 'Describe the first option',          required: true  },
+          { key: 'option_b',    label: 'Option B',   placeholder: 'Describe the second option',         required: true  },
+          { key: 'okr',         label: 'OKR context', placeholder: 'Which OKR are both options serving?', required: false },
+        ],
+        systemHint: 'Score both options using workspace framework. Show side-by-side comparison table. Identify the key decision variables (what you\'re betting on with each choice). State which you recommend and the single biggest risk of that recommendation. End with: what would make you switch to the other option.',
       },
     ],
     stats: { queries: 289, avgLatencyMs: 2600, satisfactionPct: 86, tokensUsed: 640000 },
+    category: 'strategy', trustLevel: 'sandboxed', invocationSurfaces: ['chat', 'workflow'],
+    primaryOutputTypes: ['Ranked Backlogs', 'Score Tables', 'Trade-off Docs', 'Decline Docs'], reasoningMode: 'deep', healthScore: 86,
+    linkedAgents: ['research_orchestrator', 'engineering', 'analytics'],
   },
   {
     id: 'release',
@@ -754,6 +949,8 @@ export const AGENTS: Agent[] = [
       },
     ],
     stats: { queries: 201, avgLatencyMs: 2100, satisfactionPct: 88, tokensUsed: 420000 },
+    category: 'ops', trustLevel: 'assisted', invocationSurfaces: ['chat', 'workflow', 'background'],
+    primaryOutputTypes: ['Go/No-Go Decisions', 'UAT Checklists', 'Release Notes'], reasoningMode: 'balanced', healthScore: 88,
   },
   {
     id: 'market',
@@ -806,6 +1003,318 @@ export const AGENTS: Agent[] = [
       },
     ],
     stats: { queries: 178, avgLatencyMs: 3200, satisfactionPct: 84, tokensUsed: 510000 },
+    category: 'intelligence', trustLevel: 'sandboxed', invocationSurfaces: ['chat', 'background'],
+    primaryOutputTypes: ['Market Briefs', 'TAM/SAM/SOM', 'Trend Reports'], reasoningMode: 'deep', healthScore: 84,
+  },
+
+  // ── New agents: Research Synthesis layer ─────────────────────────────────────
+
+  {
+    id: 'social_signal',
+    name: 'Social Signal',
+    icon: '📡',
+    description: 'Monitors Reddit, ProductHunt, HN, LinkedIn, and G2 for brand mentions, competitor signals, and community sentiment.',
+    color: 'text-sky-600',
+    bg: 'bg-sky-50',
+    llm: 'claude-sonnet-4-6',
+    temperature: 0.4,
+    maxTokens: 4096,
+    minRole: 'pm',
+    connectors: [],
+    capabilities: ['Reddit monitoring', 'ProductHunt tracking', 'HN mentions', 'G2 review analysis', 'LinkedIn signal', 'Community sentiment'],
+    status: 'beta',
+    systemPrompt: 'You are a community intelligence agent. Monitor public forums for signals about your product and competitors. Always distinguish between: isolated complaints vs patterns, trolling vs genuine feedback, sentiment vs facts.',
+    memory: true,
+    goals: [
+      'Surface public sentiment before it becomes a support or churn issue',
+      'Track competitor community traction as a leading indicator',
+      'Identify early adopters and advocates in public communities',
+      'Detect emerging criticism before it amplifies',
+    ],
+    recommendedMcps: ['mcp-browser', 'mcp-puppeteer', 'mcp-memory'],
+    guardrails: [
+      'Never cite a single post as a trend — require 3+ independent signals before calling it a pattern',
+      'Distinguish verified facts from community speculation',
+      'Do not surface individual user complaints without anonymizing context',
+      'Always note recency: flag if the signal is older than 30 days',
+    ],
+    tools: [
+      { id: 'web_search',    name: 'Web search',          description: 'Search for brand and competitor mentions across public sites', category: 'read',    requiresApproval: false, enabled: true  },
+      { id: 'web_scrape',    name: 'Scrape public pages', description: 'Read Reddit threads, HN posts, G2 reviews, ProductHunt pages', category: 'compute', requiresApproval: false, enabled: true  },
+      { id: 'alert_create',  name: 'Create signal alert', description: 'Post a community signal alert card to the home screen',         category: 'notify',  requiresApproval: false, enabled: true  },
+    ],
+    triggers: [
+      { id: 'daily_social',  type: 'schedule', label: 'Daily community scan',    description: 'Scan for brand and competitor mentions every morning',    schedule: '0 8 * * 1-5', outputDest: 'home_screen', enabled: false },
+      { id: 'weekly_social', type: 'schedule', label: 'Weekly community digest', description: 'Full community sentiment report every Monday',           schedule: '0 9 * * 1',   outputDest: 'notion',      enabled: false },
+    ],
+    templates: [
+      {
+        id: 'community-sentiment',
+        name: 'Community Sentiment Report',
+        description: 'Aggregate brand and competitor sentiment from public forums',
+        fields: [
+          { key: 'brand',       label: 'Brand / product to track', placeholder: 'e.g. pmGPT',                                 required: true  },
+          { key: 'competitors', label: 'Competitors to include',   placeholder: 'e.g. Productboard, Aha, Linear',              required: false },
+          { key: 'timeframe',   label: 'Timeframe',                placeholder: 'e.g. Last 30 days',                           required: false },
+        ],
+        systemHint: 'Search Reddit (r/ProductManagement, r/SaaS), HN, ProductHunt, G2, and LinkedIn. Cluster mentions by theme (praise, complaints, feature requests, comparisons). For each cluster: volume, representative quotes, trend (growing/stable/declining). Competitive section: what are users praising about competitors that we don\'t do?',
+      },
+      {
+        id: 'competitor-community',
+        name: 'Competitor Community Analysis',
+        description: 'What is the community saying about a specific competitor?',
+        fields: [
+          { key: 'competitor', label: 'Competitor name', placeholder: 'e.g. Productboard', required: true },
+        ],
+        systemHint: 'Scrape G2 recent reviews, Reddit mentions, HN threads, ProductHunt comments for the competitor. Output: top 5 praise themes, top 5 complaint themes, recent momentum signals (up/down), things users wish competitor did differently — these are your opportunities.',
+      },
+    ],
+    stats: { queries: 0, avgLatencyMs: 4100, satisfactionPct: 0, tokensUsed: 0 },
+    category: 'intelligence', trustLevel: 'autonomous', invocationSurfaces: ['background', 'chat'],
+    primaryOutputTypes: ['Sentiment Reports', 'Mention Digests', 'Community Briefs'], reasoningMode: 'balanced', healthScore: 0,
+  },
+
+  {
+    id: 'signal_aggregator',
+    name: 'Signal Aggregator',
+    icon: '🧲',
+    description: 'Receives outputs from all collector agents, deduplicates, clusters by theme, and maintains a rolling signal memory across internal and external sources.',
+    color: 'text-purple-600',
+    bg: 'bg-purple-50',
+    llm: 'claude-opus-4-6',
+    temperature: 0.2,
+    maxTokens: 8192,
+    minRole: 'pm',
+    connectors: [],
+    capabilities: ['Cross-signal clustering', 'Theme deduplication', 'Signal strength tracking', 'Trend detection', 'Memory management', 'Source attribution'],
+    status: 'beta',
+    systemPrompt: 'You are a signal aggregation engine. You receive structured signal artifacts from research, analytics, competitive, market, and social_signal agents. Deduplicate, cluster by theme, score signal strength, and emit unified SignalBriefs. NEVER invent signals — only aggregate what you receive.',
+    memory: true,
+    goals: [
+      'Maintain a unified, deduplicated view of all product signals',
+      'Track signal strength over time to identify trends vs noise',
+      'Surface cross-source correlations (e.g. NPS drop + Slack complaints + support spike = same root cause)',
+      'Emit proactive alerts when signal strength crosses a threshold',
+    ],
+    recommendedMcps: ['mcp-memory', 'mcp-sequential'],
+    guardrails: [
+      'NEVER create a theme from a single source — require 2+ independent signals',
+      'Always attribute every signal to its source agent and timestamp',
+      'Flag when signals from different sources contradict each other — do not resolve, surface the conflict',
+      'Signal strength must decay over time — signals older than 60 days are archived, not deleted',
+    ],
+    tools: [
+      { id: 'call_research',    name: 'Pull VOC signals',         description: 'Fetch latest NPS, feedback, and interview signals from Research', agentId: 'research',    category: 'agent_call', requiresApproval: false, enabled: true  },
+      { id: 'call_analytics',   name: 'Pull metric signals',      description: 'Fetch anomaly and cohort signals from Analytics',                 agentId: 'analytics',   category: 'agent_call', requiresApproval: false, enabled: true  },
+      { id: 'call_competitive', name: 'Pull competitor signals',  description: 'Fetch competitive move signals from Competitive Intel',           agentId: 'competitive', category: 'agent_call', requiresApproval: false, enabled: true  },
+      { id: 'call_market',      name: 'Pull market signals',      description: 'Fetch market trend signals from Market Intelligence',             agentId: 'market',      category: 'agent_call', requiresApproval: false, enabled: true  },
+      { id: 'call_social',      name: 'Pull community signals',   description: 'Fetch community sentiment signals from Social Signal agent',      agentId: 'social_signal', category: 'agent_call', requiresApproval: false, enabled: true },
+      { id: 'memory_write',     name: 'Write to signal memory',   description: 'Persist aggregated theme clusters to memory store',               category: 'compute',    requiresApproval: false, enabled: true  },
+      { id: 'alert_create',     name: 'Emit signal alert',        description: 'Post a high-strength signal alert to home screen',                category: 'notify',     requiresApproval: false, enabled: true  },
+    ],
+    triggers: [
+      { id: 'weekly_aggregate', type: 'schedule', label: 'Weekly signal aggregation', description: 'Collect from all sources, cluster, emit weekly digest', schedule: '0 8 * * 1', outputDest: 'home_screen', enabled: false },
+      { id: 'daily_aggregate',  type: 'schedule', label: 'Daily signal check',        description: 'Quick daily check for high-strength new signals',       schedule: '0 9 * * 1-5', outputDest: 'home_screen', enabled: false },
+    ],
+    templates: [
+      {
+        id: 'weekly-signal-digest',
+        name: 'Weekly Signal Digest',
+        description: 'Unified view of all signals from the past 7 days',
+        fields: [
+          { key: 'focus_area', label: 'Focus area (optional)', placeholder: 'e.g. Churn, Activation, Competitor X — or leave blank for all', required: false },
+        ],
+        systemHint: 'Call all 5 collector agents. Deduplicate signals. Cluster into themes (max 7). For each theme: signal strength (1-5), sources, trend (new/growing/stable/declining), representative evidence, recommended action. Highlight top theme that needs PM attention this week.',
+      },
+      {
+        id: 'signal-deep-dive',
+        name: 'Signal Deep Dive',
+        description: 'Full cross-source analysis on a specific problem area',
+        fields: [
+          { key: 'problem_area', label: 'Problem area', placeholder: 'e.g. User churn, Feature X adoption, Competitor Y', required: true },
+        ],
+        systemHint: 'Pull all signals related to this area from memory + call relevant collector agents for fresh data. Synthesize: what do internal signals say (NPS, metrics), what do external signals say (competitive, community), are they aligned or contradicting? Produce: signal brief with evidence map, confidence level, and recommended action.',
+      },
+    ],
+    stats: { queries: 0, avgLatencyMs: 5200, satisfactionPct: 0, tokensUsed: 0 },
+    category: 'research', trustLevel: 'autonomous', invocationSurfaces: ['background', 'workflow'],
+    primaryOutputTypes: ['Signal Briefs', 'Weekly Digests', 'Theme Clusters'], reasoningMode: 'deep', healthScore: 0,
+    linkedAgents: ['research', 'analytics', 'competitive', 'market', 'social_signal'],
+  },
+
+  {
+    id: 'research_orchestrator',
+    name: 'Research Orchestrator',
+    icon: '🔭',
+    description: 'PM-facing research interface. Routes research questions to the right collectors, synthesizes multi-source briefs, and maintains research memory across sessions.',
+    color: 'text-amber-700',
+    bg: 'bg-amber-50',
+    llm: 'claude-opus-4-6',
+    temperature: 0.5,
+    maxTokens: 8192,
+    minRole: 'pm',
+    connectors: ['notion', 'gdrive', 'slack'],
+    capabilities: ['Research routing', 'Multi-source synthesis', 'Anomaly investigation', 'Discovery briefing', 'Decision validation', 'Signal memory'],
+    status: 'beta',
+    systemPrompt: 'You are the PM\'s research interface. When asked a research question, determine which sources to query, gather signals in parallel, and synthesize into a structured Research Brief. Always separate: what do we know, what do we not know, and what action is implied.',
+    memory: true,
+    goals: [
+      'Answer any PM research question with multi-source evidence in under 60 seconds',
+      'Proactively surface research that should inform an in-progress decision',
+      'Build a research memory so the PM never needs to re-ask the same question',
+      'Route complex research tasks to the right specialist agents automatically',
+    ],
+    recommendedMcps: ['mcp-memory', 'mcp-sequential', 'mcp-browser'],
+    guardrails: [
+      'Every claim in a Research Brief must cite its source agent and data point',
+      'When evidence is contradictory, surface the contradiction — do not resolve it',
+      'Flag when research memory is stale (> 30 days) for a given topic',
+      'Do not synthesize fewer than 2 sources for any claim — flag single-source findings explicitly',
+    ],
+    tools: [
+      { id: 'call_research',    name: 'Query VOC research',     description: 'Call Research agent for NPS, interviews, and feedback signals',  agentId: 'research',      category: 'agent_call', requiresApproval: false, enabled: true  },
+      { id: 'call_analytics',   name: 'Query metrics',          description: 'Call Analytics agent for usage data and metric signals',          agentId: 'analytics',     category: 'agent_call', requiresApproval: false, enabled: true  },
+      { id: 'call_aggregator',  name: 'Query signal memory',    description: 'Call Signal Aggregator for cross-source theme clusters',          agentId: 'signal_aggregator', category: 'agent_call', requiresApproval: false, enabled: true },
+      { id: 'call_competitive', name: 'Query competitive',      description: 'Call Competitive Intel for competitor context',                   agentId: 'competitive',   category: 'agent_call', requiresApproval: false, enabled: true  },
+      { id: 'notion_write',     name: 'Save research brief',    description: 'Persist a research brief to Notion for future reference',          connector: 'notion',       category: 'write',      requiresApproval: true,  enabled: true  },
+    ],
+    triggers: [
+      { id: 'pre_prd',       type: 'event',    label: 'PRD creation started',   description: 'When Docs agent starts a PRD, auto-pull relevant research context', event: 'prd_started', outputDest: 'home_screen', enabled: false },
+      { id: 'pre_planning',  type: 'schedule', label: 'Pre-planning research',  description: 'Weekly research digest before Monday planning ceremonies',           schedule: '0 7 * * 1', outputDest: 'notion',      enabled: false },
+    ],
+    templates: [
+      {
+        id: 'research-brief',
+        name: 'Research Brief',
+        description: 'Multi-source research brief for any PM question',
+        fields: [
+          { key: 'question',  label: 'Research question',  placeholder: 'e.g. Why are users churning in month 2?',             required: true  },
+          { key: 'urgency',   label: 'Urgency',             placeholder: 'e.g. Needed for sprint planning on Friday',           required: false },
+          { key: 'scope',     label: 'Scope',               placeholder: 'e.g. Enterprise users only, last 90 days',            required: false },
+        ],
+        systemHint: 'Route question to relevant agents (research, analytics, signal_aggregator, competitive as needed). Synthesize into: What We Know (with sources), What We Don\'t Know, Signal Strength (1-5), Recommended Action, Open Questions. Cite source agent for every claim.',
+      },
+      {
+        id: 'anomaly-investigation',
+        name: 'Anomaly Investigation',
+        description: 'Investigate a metric drop or unexpected change',
+        fields: [
+          { key: 'metric',    label: 'Metric that changed',  placeholder: 'e.g. Activation rate',                              required: true  },
+          { key: 'change',    label: 'Change + date',         placeholder: 'e.g. -8% starting April 14',                       required: true  },
+          { key: 'context',   label: 'Recent changes',        placeholder: 'Releases, experiments, external events',            required: false },
+        ],
+        systemHint: 'Call analytics for metric breakdown by segment/cohort/time. Call research for concurrent user feedback signals. Call signal_aggregator for cross-source correlation. Output: RCA structure — what changed, correlated signals (with sources), root cause hypotheses (ranked by evidence strength), immediate action, monitoring plan.',
+      },
+      {
+        id: 'decision-validation',
+        name: 'Decision Validation',
+        description: 'Validate a product hypothesis or decision with research evidence',
+        fields: [
+          { key: 'hypothesis', label: 'Hypothesis / decision', placeholder: 'e.g. Users want a mobile app over web improvements', required: true },
+          { key: 'context',    label: 'Context',                placeholder: 'What led to this hypothesis?',                      required: false },
+        ],
+        systemHint: 'Pull evidence FOR and AGAINST the hypothesis from all relevant sources. Score confidence: evidence strength × source diversity. Output: Evidence For, Evidence Against, Gaps in Evidence, Confidence Level (1-5), Recommended Next Step (ship / validate more / kill hypothesis).',
+      },
+    ],
+    stats: { queries: 0, avgLatencyMs: 6100, satisfactionPct: 0, tokensUsed: 0 },
+    category: 'research', trustLevel: 'assisted', invocationSurfaces: ['chat', 'home', 'workflow'],
+    primaryOutputTypes: ['Research Briefs', 'Anomaly Reports', 'Decision Evidence'], reasoningMode: 'deep', healthScore: 0,
+    linkedAgents: ['research', 'analytics', 'signal_aggregator', 'competitive', 'market'],
+  },
+
+  // ── New agent: GTM ────────────────────────────────────────────────────────────
+
+  {
+    id: 'gtm',
+    name: 'GTM Planner',
+    icon: '📣',
+    description: 'Go-to-market planning, launch messaging, persona-targeted collateral, launch checklists, and cross-functional launch coordination.',
+    color: 'text-fuchsia-600',
+    bg: 'bg-fuchsia-50',
+    llm: 'claude-sonnet-4-6',
+    temperature: 0.6,
+    maxTokens: 4096,
+    minRole: 'pm',
+    connectors: ['notion', 'gdrive', 'slack'],
+    capabilities: ['GTM planning', 'Launch messaging', 'Persona targeting', 'Launch checklists', 'Enablement briefs', 'Announcement copy'],
+    status: 'beta',
+    systemPrompt: 'You are a product marketing and GTM expert. Plan launches end-to-end: who we\'re targeting, what we\'re saying, what each team needs, and how we\'ll know if the launch worked. Always lead with customer outcome, never feature names.',
+    memory: false,
+    goals: [
+      'Make every launch coordinated and documented across all functions',
+      'Ensure Sales, Support, and Marketing are enabled before launch day',
+      'Produce messaging that converts — outcome-led, persona-specific',
+      'Create post-launch success criteria before launch, not after',
+    ],
+    recommendedMcps: ['mcp-notion', 'mcp-slack'],
+    guardrails: [
+      'NEVER launch without a success metric defined upfront',
+      'Always produce function-specific briefs — what engineering, sales, support, and marketing each need to do',
+      'Lead with customer outcome in all external messaging — never lead with the feature name',
+      'Do not write announcement copy without knowing the target persona from the workspace persona library',
+    ],
+    tools: [
+      { id: 'notion_read',   name: 'Read PRD / specs',          description: 'Pull the feature PRD and specs from Notion for launch context',  connector: 'notion',  category: 'read',      requiresApproval: false, enabled: true  },
+      { id: 'gdrive_read',   name: 'Read market assets',        description: 'Access existing positioning docs and messaging frameworks',        connector: 'gdrive',  category: 'read',      requiresApproval: false, enabled: true  },
+      { id: 'notion_write',  name: 'Create GTM plan',           description: 'Publish the GTM plan to Notion',                                  connector: 'notion',  category: 'write',     requiresApproval: true,  enabled: true  },
+      { id: 'slack_post',    name: 'Post launch briefing',      description: 'Send launch brief to workspace releases Slack channel',           connector: 'slack',   category: 'notify',    requiresApproval: true,  enabled: true  },
+      { id: 'call_sales',    name: 'Generate sales enablement', description: 'Call Sales agent to produce sales one-pager for the launch',      agentId: 'sales',     category: 'agent_call', requiresApproval: false, enabled: true  },
+      { id: 'call_research', name: 'Pull user context',         description: 'Call Research Orchestrator to pull relevant user signals',         agentId: 'research_orchestrator', category: 'agent_call', requiresApproval: false, enabled: true },
+    ],
+    triggers: [
+      { id: 'prd_published', type: 'event', label: 'PRD marked ready for launch', description: 'When a PRD artifact is published, auto-draft a GTM plan outline', event: 'artifact_published', outputDest: 'notion', enabled: false },
+    ],
+    templates: [
+      {
+        id: 'gtm-plan',
+        name: 'Full GTM Plan',
+        description: 'End-to-end launch plan covering messaging, audience, and cross-functional readiness',
+        fields: [
+          { key: 'feature',       label: 'Feature / release name',  placeholder: 'e.g. AI Sprint Planner',                           required: true  },
+          { key: 'launch_date',   label: 'Target launch date',       placeholder: 'e.g. May 15, 2026',                                required: true  },
+          { key: 'target_segment',label: 'Target segment',           placeholder: 'e.g. PM Leads at Series B SaaS, >10 engineers',   required: true  },
+          { key: 'key_benefit',   label: 'Core value proposition',  placeholder: 'What does this change for the customer?',          required: true  },
+        ],
+        systemHint: 'Call research_orchestrator for user signals about this feature area. Use workspace persona library for target segment. Structure: Launch Summary (1 para), Target Audience + Messaging (per persona), Channels (in-app, email, Slack, social), Function Readiness Table (Sales / Support / Marketing / Eng — what each team needs to do before launch), Success Metrics (how we know it worked), Post-Launch Monitoring Plan.',
+      },
+      {
+        id: 'launch-messaging',
+        name: 'Launch Messaging Brief',
+        description: 'Persona-targeted messaging for a feature launch',
+        fields: [
+          { key: 'feature',   label: 'Feature name',        placeholder: 'e.g. Workflow Automation',                             required: true  },
+          { key: 'personas',  label: 'Target personas',      placeholder: 'Leave blank to use workspace personas',                required: false },
+          { key: 'channel',   label: 'Channel',              placeholder: 'e.g. In-app tooltip, Email, ProductHunt post',         required: false },
+        ],
+        systemHint: 'For each persona in workspace: write a unique headline (pain-led), 2 supporting bullets (outcome-led), and a CTA. Channel-specific: in-app = 12-word headline + 1 sentence. Email = subject line + 3 bullets + CTA. Blog = title + intro paragraph. NEVER use the feature\'s internal name as the headline.',
+      },
+      {
+        id: 'launch-checklist',
+        name: 'Launch Readiness Checklist',
+        description: 'Cross-functional checklist — who does what before launch day',
+        fields: [
+          { key: 'feature',     label: 'Feature / release',  placeholder: 'e.g. v2.4 — Notification Redesign',                  required: true  },
+          { key: 'launch_date', label: 'Launch date',         placeholder: 'e.g. May 15, 2026',                                  required: true  },
+          { key: 'teams',       label: 'Teams involved',      placeholder: 'e.g. Eng, Design, Sales, Support, Marketing',        required: false },
+        ],
+        systemHint: 'Generate a checklist with T-minus timeline (T-14d, T-7d, T-3d, T-1d, Launch day, T+3d). For each checkpoint: list what each team must complete. Include: feature flag state, pricing/billing alignment, support documentation, sales training, analytics instrumentation, rollback plan, comms approval. Mark each item with owner role.',
+      },
+      {
+        id: 'enablement-brief',
+        name: 'Internal Enablement Brief',
+        description: 'What Sales and Support need to know before the launch',
+        fields: [
+          { key: 'feature',         label: 'Feature',             placeholder: 'e.g. AI Sprint Planner',                          required: true  },
+          { key: 'audience',        label: 'Internal audience',   placeholder: 'e.g. Sales team / Support team / All hands',      required: true  },
+          { key: 'launch_date',     label: 'Launch date',          placeholder: 'e.g. May 15, 2026',                               required: false },
+        ],
+        systemHint: 'Call sales agent to generate the sales one-pager. Structure enablement brief: What launched and why (1 para), What customers will experience (user-facing changes), What Sales needs to say (talking points + top 3 objections + responses), What Support needs to know (common questions + answers + escalation path), What to track (success metrics + alert thresholds). Keep it scannable — bullet points over paragraphs.',
+      },
+    ],
+    stats: { queries: 0, avgLatencyMs: 2800, satisfactionPct: 0, tokensUsed: 0 },
+    category: 'launch', trustLevel: 'assisted', invocationSurfaces: ['chat', 'workflow'],
+    primaryOutputTypes: ['GTM Plans', 'Launch Checklists', 'Messaging Briefs', 'Enablement Docs'], reasoningMode: 'balanced', healthScore: 0,
+    linkedAgents: ['sales', 'research_orchestrator', 'release', 'docs'],
   },
 ];
 

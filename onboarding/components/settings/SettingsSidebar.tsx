@@ -10,16 +10,17 @@ import {
   LayoutDashboard, MessageSquare, Bot, GitBranch,
   Plug, FileText, Settings, Building2, Users,
   Shield, Search, ChevronDown, LogOut, BarChart2,
-  FolderOpen, Activity, Lock,
+  FolderOpen, Activity, Lock, SlidersHorizontal,
 } from 'lucide-react';
 
 const NAV_PRIMARY = [
-  { href: '/dashboard',           icon: LayoutDashboard, label: 'Home'       },
-  { href: '/dashboard/chat',      icon: MessageSquare,   label: 'Chat'       },
-  { href: '/dashboard/agents',    icon: Bot,             label: 'Agents'     },
-  { href: '/dashboard/workflows', icon: GitBranch,       label: 'Workflows'  },
-  { href: '/dashboard/artifacts', icon: FolderOpen,      label: 'Artifacts'  },
-  { href: '/dashboard/connectors',icon: Plug,            label: 'Connectors' },
+  { href: '/dashboard',           icon: LayoutDashboard,   label: 'Home'       },
+  { href: '/dashboard/chat',      icon: MessageSquare,     label: 'Chat'       },
+  { href: '/dashboard/agents',    icon: Bot,               label: 'Agents'     },
+  { href: '/dashboard/workflows', icon: GitBranch,         label: 'Workflows'  },
+  { href: '/dashboard/artifacts', icon: FolderOpen,        label: 'Artifacts'  },
+  { href: '/dashboard/connectors',icon: Plug,              label: 'Connectors' },
+  { href: '/dashboard/workspace', icon: SlidersHorizontal, label: 'Workspace'  },
 ];
 
 const NAV_SECONDARY = [
