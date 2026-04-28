@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { authApi, tokenStore } from '@/lib/auth';
 import { Logo } from '@/components/shared/Logo';
-import { Eye, EyeOff, Loader2, ArrowRight, Mail, Lock } from 'lucide-react';
+import { Eye, EyeOff, Loader2, ArrowRight, Mail, Lock, Sparkles } from 'lucide-react';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -53,6 +53,16 @@ export default function LoginPage() {
             <h1 className="text-[26px] font-black text-slate-900 mb-1.5 tracking-tight">Welcome back</h1>
             <p className="text-[14px] text-slate-500">Sign in to your pmGPT workspace</p>
           </div>
+
+          {authApi.isDemoMode() && (
+            <div className="mb-5 px-4 py-3 rounded-xl bg-blue-50 border border-blue-200 flex items-start gap-2.5">
+              <Sparkles className="w-4 h-4 text-blue-500 flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="text-[13px] text-blue-700 font-semibold">Demo mode</p>
+                <p className="text-[12px] text-blue-600 mt-0.5">Sign in with any email and password — no backend required.</p>
+              </div>
+            </div>
+          )}
 
           {error && (
             <div className="mb-5 px-4 py-3 rounded-xl bg-red-50 border border-red-200 text-[13px] text-red-700 font-medium">

@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { authApi, tokenStore } from '@/lib/auth';
 import { Logo } from '@/components/shared/Logo';
-import { ArrowRight, Loader2, Eye, EyeOff, Building2, User, Mail, Lock } from 'lucide-react';
+import { ArrowRight, Loader2, Eye, EyeOff, Building2, User, Mail, Lock, Sparkles } from 'lucide-react';
 
 const ROLES = ['Founder / CEO', 'CPO / CTO', 'Head of Product', 'VP Product', 'Senior PM', 'PM', 'Solo PM'];
 
@@ -84,6 +84,16 @@ export default function SignupPage() {
             <h1 className="text-[26px] font-black text-slate-900 mb-1.5 tracking-tight">Create your account</h1>
             <p className="text-[14px] text-slate-500">Start building your AI product team in 2 minutes.</p>
           </div>
+
+          {authApi.isDemoMode() && (
+            <div className="mb-5 px-4 py-3 rounded-xl bg-blue-50 border border-blue-200 flex items-start gap-2.5">
+              <Sparkles className="w-4 h-4 text-blue-500 flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="text-[13px] text-blue-700 font-semibold">Demo mode</p>
+                <p className="text-[12px] text-blue-600 mt-0.5">Create an account with any details — no real data is stored.</p>
+              </div>
+            </div>
+          )}
 
           {error && (
             <div className="mb-5 px-4 py-3 rounded-xl bg-red-50 border border-red-200 text-[13px] text-red-700 font-medium">
